@@ -115,6 +115,48 @@ public class NumberField extends TextField implements Serializable {
 	public DataType getDataType() {
 		return noOfDigitsAfterDecimal == 0 ? DataType.INTEGER : DataType.FLOAT;
 	}
+	
+	@Override
+	public ValidationStatus validate(Object value) {
+		ValidationStatus status = super.validate(value);
+		if (status != ValidationStatus.OK) {
+			return status;
+		}
+		
+		if (value == null || value.toString().trim().isEmpty()) {
+			return status;
+		}
+		
+		BigDecimal number = null;
+		try {
+			number = new BigDecimal(value.toString().trim());
+		} catch (Exception e) {
+			return ValidationStatus.NOT_NUMBER;
+		}
+		
+		String minValStr = getMinValue();
+		if (minValStr != null && !minValStr.trim().isEmpty()) {
+			BigDecimal minVal = new BigDecimal(minValStr);
+			if (number.compareTo(minVal) < 0) {
+				return ValidationStatus.NUMBER_OUT_OF_RANGE;
+			}
+		}
+		
+		String maxValStr = getMaxValue();
+		if (maxValStr != null && !maxValStr.trim().isEmpty()) {
+			BigDecimal maxVal = new BigDecimal(maxValStr);
+			if (number.compareTo(maxVal) > 0) {
+				return ValidationStatus.NUMBER_OUT_OF_RANGE;
+			}
+		}
+		
+		int actualDigitsAfterDecimal = getNumberOfDigitsAfterDecimal(value.toString().trim());
+		if (actualDigitsAfterDecimal > noOfDigitsAfterDecimal) {
+			return ValidationStatus.DIGITS_AFTER_DECIMAL_EXCEEDS;
+		}
+		
+		return ValidationStatus.OK;
+	}
 
 	@SuppressWarnings("unchecked")
 	@Override
@@ -123,7 +165,12 @@ public class NumberField extends TextField implements Serializable {
 			return null;
 		}
 
-		return new BigDecimal(value);
+		try {
+			return new BigDecimal(value);
+		} catch (NumberFormatException nfe) {
+			throw new IllegalArgumentException("Invalid number: " + value);
+		}
+		
 	}
 
 	@Override
@@ -225,4 +272,13 @@ public class NumberField extends TextField implements Serializable {
 		
 		writeElementEnd(writer, "numberField");		
 	}
+	
+	private int getNumberOfDigitsAfterDecimal(String value) {
+	    int index = value.indexOf('.');
+	    if (index < 0) {
+	       return 0;
+	    }
+	    
+	    return value.length() - 1 - index;
+	}	
 }

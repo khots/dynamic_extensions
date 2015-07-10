@@ -119,17 +119,6 @@ public interface AQLListener extends ParseTreeListener {
 	void exitDate_interval(@NotNull AQLParser.Date_intervalContext ctx);
 
 	/**
-	 * Enter a parse tree produced by {@link AQLParser#NthChildFilterExpr}.
-	 * @param ctx the parse tree
-	 */
-	void enterNthChildFilterExpr(@NotNull AQLParser.NthChildFilterExprContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link AQLParser#NthChildFilterExpr}.
-	 * @param ctx the parse tree
-	 */
-	void exitNthChildFilterExpr(@NotNull AQLParser.NthChildFilterExprContext ctx);
-
-	/**
 	 * Enter a parse tree produced by {@link AQLParser#MonthsDiffFunc}.
 	 * @param ctx the parse tree
 	 */
@@ -141,6 +130,17 @@ public interface AQLListener extends ParseTreeListener {
 	void exitMonthsDiffFunc(@NotNull AQLParser.MonthsDiffFuncContext ctx);
 
 	/**
+	 * Enter a parse tree produced by {@link AQLParser#NthChildFilterExpr}.
+	 * @param ctx the parse tree
+	 */
+	void enterNthChildFilterExpr(@NotNull AQLParser.NthChildFilterExprContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link AQLParser#NthChildFilterExpr}.
+	 * @param ctx the parse tree
+	 */
+	void exitNthChildFilterExpr(@NotNull AQLParser.NthChildFilterExprContext ctx);
+
+	/**
 	 * Enter a parse tree produced by {@link AQLParser#CrossTabExpr}.
 	 * @param ctx the parse tree
 	 */
@@ -150,6 +150,17 @@ public interface AQLListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitCrossTabExpr(@NotNull AQLParser.CrossTabExprContext ctx);
+
+	/**
+	 * Enter a parse tree produced by {@link AQLParser#ReportExpr}.
+	 * @param ctx the parse tree
+	 */
+	void enterReportExpr(@NotNull AQLParser.ReportExprContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link AQLParser#ReportExpr}.
+	 * @param ctx the parse tree
+	 */
+	void exitReportExpr(@NotNull AQLParser.ReportExprContext ctx);
 
 	/**
 	 * Enter a parse tree produced by {@link AQLParser#BoolLiteral}.

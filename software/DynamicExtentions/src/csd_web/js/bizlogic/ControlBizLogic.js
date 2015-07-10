@@ -540,9 +540,10 @@ var ControlBizLogic = {
 			// Erase the existing view
 			Main.currentFieldView.destroy();
 		}
-		var control = new Models.Field(fieldModel.toJSON());
+		var control = new Models.Field($.extend(true, {}, fieldModel.attributes));
 		var shortCode = Utility.getShortCode(control.get('type'));
 		control.set({
+			id: null,
 			editName : undefined,
 			formTreeNodeId : undefined,
 			controlName : shortCode,
@@ -654,9 +655,13 @@ var ControlBizLogic = {
 	 * Create an empty control for editing
 	 */
 	createControl : function(controlType) {
+		var selectedNodeId = Main.treeView.getTree().getSelectedItemId();
+		var selectedNodeControlType = Main.treeView.getTree().getUserData(
+				selectedNodeId, "controlType");
 		var shortCode = Utility.getShortCode(controlType);
 		var controlModel = new Models.Field({
 			type : controlType,
+			isSubFormControl: selectedNodeControlType == 'subForm',
 			pvs : {},
 			sequenceNumber : ControlBizLogic.getNextSequenceNumber(),
 			controlName : shortCode

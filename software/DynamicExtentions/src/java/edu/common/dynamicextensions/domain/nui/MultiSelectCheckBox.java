@@ -121,7 +121,8 @@ public class MultiSelectCheckBox extends SelectControl implements MultiSelectCon
 	@Override
 	public void getProps(Map<String, Object> props) {
 		super.getProps(props);
-		props.put("type", "checkbox"); 
+		props.put("type", "checkbox");
+		props.put("optionsPerRow", getOptionsPerRow()); 
 	}
 	
 	@Override
@@ -131,4 +132,9 @@ public class MultiSelectCheckBox extends SelectControl implements MultiSelectCon
 		writeElement(writer, "optionsPerRow", getOptionsPerRow());			
 		writeElementEnd(writer, "checkBox");		
 	}
+	
+	@Override
+	public ValidationStatus validate(Object value) {
+		return validateMultiple(value);
+	}		
 }

@@ -10,11 +10,15 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.springframework.util.CollectionUtils;
+
 import edu.common.dynamicextensions.domain.nui.Container;
 import edu.common.dynamicextensions.domain.nui.Control;
+import edu.common.dynamicextensions.domain.nui.ControlValueCrud;
 import edu.common.dynamicextensions.domain.nui.DatePicker;
 import edu.common.dynamicextensions.domain.nui.FileUploadControl;
 import edu.common.dynamicextensions.domain.nui.Label;
+import edu.common.dynamicextensions.domain.nui.LookupControl;
 import edu.common.dynamicextensions.domain.nui.MultiSelectControl;
 import edu.common.dynamicextensions.domain.nui.PageBreak;
 import edu.common.dynamicextensions.domain.nui.SubFormControl;
@@ -23,6 +27,7 @@ import edu.common.dynamicextensions.napi.ControlValue;
 import edu.common.dynamicextensions.napi.FileControlValue;
 import edu.common.dynamicextensions.napi.FormAuditManager;
 import edu.common.dynamicextensions.napi.FormData;
+import edu.common.dynamicextensions.napi.FormDataFilterManager;
 import edu.common.dynamicextensions.napi.FormDataManager;
 import edu.common.dynamicextensions.ndao.JdbcDao;
 import edu.common.dynamicextensions.ndao.JdbcDaoFactory;
@@ -44,14 +49,19 @@ public class FormDataManagerImpl implements FormDataManager {
 	private static final String GET_FILE_CONTROL_VALUES = "SELECT %s, %s, %s from %s where IDENTIFIER = ?";
 
 	private boolean auditEnable = true;
-
+	
 	public FormDataManagerImpl(boolean auditEnable) {
 		this.auditEnable = auditEnable;
 	}
 	
 	public FormDataManagerImpl() { 
 	}
-		
+	
+	@Override
+	public FormDataFilterManager getFilterMgr() {
+		return FormDataFilterManagerImpl.getInstance();
+	}
+
 	@Override
 	public FormData getFormData(Long containerId, Long recordId) {		
 		try {
@@ -85,19 +95,83 @@ public class FormDataManagerImpl implements FormDataManager {
 			throw new RuntimeException("Error obtaining form data: [" + container.getId() + ", " + recordId  + "]", e);
 		}	
 	}
+	
+	@Override
+	public List<FormData> getSummaryData(Long containerId, List<Long> recordIds) {
+		try {
+			List<FormData> result = Collections.emptyList();
+			
+			Container container = Container.getContainer(containerId);
+			if (container != null) {
+				result = getSummaryData(container, recordIds);
+			}
+			
+			return result;
+		} catch (Exception e) {
+			throw new RuntimeException("Error obtaining summarized form data list", e);
+		}
+	}
 
 	@Override
-	public Long saveOrUpdateFormData(UserContext userCtxt, FormData formData) {
+	public List<FormData> getSummaryData(final Container container, final List<Long> recordIds) {
 		try {
-			return saveOrUpdateFormData(userCtxt, formData, JdbcDaoFactory.getJdbcDao());
+			JdbcDao jdbcDao = JdbcDaoFactory.getJdbcDao();
+			
+			final List<Control> summaryCtrls = new ArrayList<Control>();
+			for (Control ctrl : container.getControls()) {
+				if (isGridControl(ctrl)) {
+					summaryCtrls.add(ctrl);
+				}
+			}
+			
+			if (summaryCtrls.isEmpty()) {
+				return Collections.emptyList();
+			}
+			
+			String sql = buildRecsSummaryQuery(summaryCtrls, container.getDbTableName(), "IDENTIFIER", recordIds.size());
+			return jdbcDao.getResultSet(sql, recordIds, new ResultExtractor<List<FormData>>() {
+				@Override
+				public List<FormData> extract(ResultSet rs) throws SQLException {
+					List<FormData> result = new ArrayList<FormData>();
+					
+					while (rs.next()) {
+						Long recordId = rs.getLong("IDENTIFIER");
+						FormData formData = new FormData(container);
+						formData.setRecordId(recordId);
+						
+						int idx = 1;
+						for (Control ctrl : summaryCtrls) {
+							Object rsObj = null;
+							if (ctrl instanceof DatePicker) {
+								rsObj = rs.getTimestamp(idx++);
+							} else {
+								rsObj = rs.getObject(idx++);
+							}
+							
+							formData.addFieldValue(new ControlValue(ctrl, rsObj));
+						}
+						
+						result.add(formData);
+					}
+					
+					return result;
+				}				
+			});			
 		} catch (Exception e) {
-			throw new RuntimeException("Error saving form data", e);
-		} 
+			throw new RuntimeException("Error obtaining summarized form data list", e);
+		}
+	}
+	
+	@Override
+	public Long saveOrUpdateFormData(UserContext userCtxt, FormData formData) {
+		return saveOrUpdateFormData(userCtxt, formData, JdbcDaoFactory.getJdbcDao());
 	}
 
 	@Override
 	public Long saveOrUpdateFormData(UserContext userCtxt, FormData formData, JdbcDao jdbcDao) {
 		try {
+			formData = getFilterMgr().executePreFilters(userCtxt, formData);
+			
 			String operation = formData.getRecordId() == null ? "INSERT" : "UPDATE";
 			Long recordId = saveOrUpdateFormData(jdbcDao, formData, null);
 			formData.setRecordId(recordId);
@@ -107,9 +181,17 @@ public class FormDataManagerImpl implements FormDataManager {
 				auditManager.audit(userCtxt, formData, operation, jdbcDao);
 			}
 			
+			formData = getFilterMgr().executePostFilters(userCtxt, formData);
 			return recordId;
+		} catch (IllegalArgumentException iae) {
+			throw iae;
 		} catch (Exception e) {
-			throw new RuntimeException("Error saving form data", e);
+			StringBuilder msg = new StringBuilder("Error saving form data: ");
+			if (e.getMessage() != null) {
+				msg.append(e.getMessage());
+			}
+			
+			throw new RuntimeException(msg.toString(), e);
 		}
 	}
 	
@@ -139,39 +221,14 @@ public class FormDataManagerImpl implements FormDataManager {
 					FormData formData = new FormData(container);
 					formData.setRecordId(recordId);
 						
-					for (Control ctrl : simpleCtrls) {
-						ControlValue ctrlValue = null;
-
-						if (ctrl instanceof FileUploadControl) {
-							String filename = rs.getString(ctrl.getDbColumnName() + "_NAME");
-							if (filename != null) {
-								String type = rs.getString(ctrl.getDbColumnName() + "_TYPE");
-								String fileId = rs.getString(ctrl.getDbColumnName() + "_ID");
-								ctrlValue = new ControlValue(ctrl, new FileControlValue(filename, type, fileId));
-							} else {
-								ctrlValue = new ControlValue(ctrl, null);
-							}
-						} else {
-							Object rsObj = null;
-							if (ctrl instanceof DatePicker) {
-								rsObj = rs.getTimestamp(ctrl.getDbColumnName());
-							} else {
-								rsObj = rs.getObject(ctrl.getDbColumnName());
-							}
-							
-							String value = ctrl.toString(rsObj);
-							ctrlValue = new ControlValue(ctrl, value);
-						}
-							
-						formData.addFieldValue(ctrlValue);
-					}
+					extractSimpleValues(simpleCtrls, rs, formData);
 						
 					for (Control ctrl : multiSelectCtrls) {
 						List<String> msValues = getMultiSelectValues(jdbcDao, ctrl, recordId);
 						ControlValue ctrlValue = new ControlValue(ctrl, msValues.toArray(new String[0]));					
 						formData.addFieldValue(ctrlValue);					
 					}
-						
+					
 					formsData.add(formData);
 				}
 					
@@ -181,15 +238,30 @@ public class FormDataManagerImpl implements FormDataManager {
 		
 		for (FormData formData : formsData) {
 			for (Control ctrl : subFormCtrls) {
-				SubFormControl subFormCtrl = (SubFormControl)ctrl;
-				List<FormData> subFormData = getFormData(jdbcDao, subFormCtrl.getSubContainer(), "PARENT_RECORD_ID", formData.getRecordId());				
-				formData.addFieldValue(new ControlValue(subFormCtrl, subFormData));
-			}
+				SubFormControl sfCtrl = (SubFormControl)ctrl;
+				if (sfCtrl instanceof ControlValueCrud) {
+					ControlValueCrud crud = (ControlValueCrud)sfCtrl;
+					formData.addFieldValue(crud.getValue(jdbcDao, formData));
+				} else if (!sfCtrl.isOneToOne() || !sfCtrl.isInverse()) {
+					List<FormData> sfData = getFormData(jdbcDao, sfCtrl.getSubContainer(), "PARENT_RECORD_ID", formData.getRecordId());
+					
+					ControlValue cv = null;
+					if (sfCtrl.isOneToOne() && !CollectionUtils.isEmpty(sfData)) {
+						cv = new ControlValue(sfCtrl, sfData.iterator().next());
+					} else {
+						cv = new ControlValue(sfCtrl, sfData);
+					}
+					
+					formData.addFieldValue(cv);					
+				} else {
+					throw new RuntimeException("One-to-one inverse not yet implemented - TODO");
+				}
+			}			
 		}
 		
 		return formsData;		
 	}
-
+	
 	private String buildQuery(List<Control> simpleCtrls, String tableName, String identifyingColumn) {
 		StringBuilder query = new StringBuilder("SELECT ");
 		for (Control ctrl : simpleCtrls) {
@@ -208,7 +280,46 @@ public class FormDataManagerImpl implements FormDataManager {
 		return query.toString();
 	}
 	
-	
+	private String buildRecsSummaryQuery(List<Control> ctrls, String tableName, String identifyingColumn, int noOfRecords) {
+		StringBuilder query = new StringBuilder("SELECT ");
+		
+		int lookup = 0;
+		for (Control ctrl : ctrls) {
+			if (ctrl instanceof FileUploadControl) {
+				query.append("m.").append(ctrl.getDbColumnName()).append("_NAME, ");
+			} else if (ctrl instanceof LookupControl) {
+				LookupControl lu = (LookupControl)ctrl;
+				query.append("l").append(lookup).append(".").append(lu.getValueColumn()).append(", ");
+				lookup++;
+			} else {
+				query.append("m.").append(ctrl.getDbColumnName()).append(", ");
+			}
+		}
+
+		
+		query.append("m.").append(identifyingColumn)
+			.append(" from ")
+			.append(tableName)
+			.append(" m ");
+		
+		lookup = 0;
+		for (Control ctrl : ctrls) {
+			if (ctrl instanceof LookupControl) {
+				LookupControl lu = (LookupControl)ctrl;
+				String alias = "l" + lookup;
+				query.append(" left join ").append(lu.getTableName()).append(" ").append(alias)
+					.append(" on ").append(alias).append(".").append(lu.getLookupKey()).append(" = ").append("m.").append(lu.getParentKey());
+			}
+		}
+		
+		query.append(" WHERE m.").append(identifyingColumn).append(" in (");
+		for (int i = 0; i < noOfRecords - 1; ++i) {
+			query.append("?, ");
+		}
+		query.append("?)");			
+		return query.toString();
+	}
+		
 	private List<String> getMultiSelectValues(final JdbcDao jdbcDao, final Control ctrl, Long recordId) 
 	throws SQLException {		
 		MultiSelectControl msCtrl = (MultiSelectControl)ctrl;
@@ -258,20 +369,20 @@ public class FormDataManagerImpl implements FormDataManager {
 					}					
 				});		
 	}
-
+	
 	private Long saveOrUpdateFormData(JdbcDao jdbcDao, FormData formData, Long parentRecId)
 	throws Exception {
 		List<Control> simpleCtrls = new ArrayList<Control>();
 		List<Control> multiSelectCtrls = new ArrayList<Control>();
 		List<Control> subFormCtrls = new ArrayList<Control>();
-		
+
 		Container container = formData.getContainer();
 		Long recordId = formData.getRecordId();
 		List<InputStream> inputStreams = new ArrayList<InputStream>();
 		
 		segregateControls(container, simpleCtrls, multiSelectCtrls, subFormCtrls);
 		
-		String upsertSql = buildUpsertSql(simpleCtrls, container.getDbTableName(), recordId, parentRecId);
+		String upsertSql = buildUpsertSql(simpleCtrls, subFormCtrls, container.getDbTableName(), recordId, parentRecId);
 		List<Object> params = new ArrayList<Object>();
 
 		try {
@@ -305,6 +416,23 @@ public class FormDataManagerImpl implements FormDataManager {
 				recordId = jdbcDao.getNextId(RECORD_ID_SEQ);
 				formData.setRecordId(recordId);
 			}
+			
+			for (Control ctrl : subFormCtrls) {
+				SubFormControl sfCtrl = (SubFormControl)ctrl;
+				if (!sfCtrl.isOneToOne() || !sfCtrl.isInverse()) {
+					continue;
+				}
+				
+				
+				if (sfCtrl instanceof ControlValueCrud) {
+					ControlValueCrud crud = (ControlValueCrud)sfCtrl;
+					Object key = crud.saveValue(jdbcDao, formData, formData.getFieldValue(sfCtrl.getName()));
+					params.add(key);
+				} else {
+					throw new RuntimeException("One-to-one inverse not yet implemented - TODO");
+				}
+			}
+			
 			params.add(recordId);
 
 			if (!upsertSql.isEmpty()) {
@@ -324,15 +452,32 @@ public class FormDataManagerImpl implements FormDataManager {
 
 			for (Control sfCtrl : subFormCtrls) {
 				SubFormControl subFormCtrl = (SubFormControl) sfCtrl;
+				if (subFormCtrl.isOneToOne() && subFormCtrl.isInverse()) {
+					continue;
+				}
+				
 				ControlValue subFormVal = formData.getFieldValue(subFormCtrl.getName());
-				List<FormData> subFormsData = subFormVal != null ? (List<FormData>) subFormVal.getValue() : null;
+				
+				if (subFormCtrl instanceof ControlValueCrud) {
+					ControlValueCrud crud = (ControlValueCrud)subFormCtrl;
+					crud.saveValue(jdbcDao, formData, subFormVal);
+					continue;
+				} 
+				
+				List<FormData> subFormsData = null;
+				if (subFormCtrl.isOneToOne() && subFormVal != null) {
+					subFormsData = new ArrayList<FormData>();
+					subFormsData.add((FormData)subFormVal.getValue());
+				} else if (subFormVal != null) {
+					subFormsData = (List<FormData>) subFormVal.getValue();
+				}
 				
 				if (subFormsData == null) {
 					continue;
 				}
-				String sfTableName = subFormCtrl.getSubContainer().getDbTableName();
-				Set<Long> currentSfIds = new HashSet<Long>();
 				
+				String sfTableName = subFormCtrl.getSubContainer().getDbTableName();
+				Set<Long> currentSfIds = new HashSet<Long>();				
 				for (FormData subFormData : subFormsData) {
 					Long subFormRecId = saveOrUpdateFormData(jdbcDao, subFormData, recordId);
 					subFormData.setRecordId(subFormRecId);
@@ -361,12 +506,12 @@ public class FormDataManagerImpl implements FormDataManager {
 		return recordId;		
 	}
 
-	private String buildUpsertSql(List<Control> simpleCtrls, String tableName, Long recordId, Long parentRecId) {
+	private String buildUpsertSql(List<Control> simpleCtrls, List<Control> subFormCtrls, String tableName, Long recordId, Long parentRecId) {
 		String sql = null;
 		if (recordId == null) {
-			sql = buildInsertSql(simpleCtrls, tableName, parentRecId != null);
+			sql = buildInsertSql(simpleCtrls, subFormCtrls, tableName, parentRecId != null);
 		} else {
-			sql = buildUpdateSql(simpleCtrls, tableName);
+			sql = buildUpdateSql(simpleCtrls, subFormCtrls, tableName);
 		}
 		
 		return sql;
@@ -375,7 +520,7 @@ public class FormDataManagerImpl implements FormDataManager {
 	//
 	// take care of file control;
 	// 
-	private String buildInsertSql(List<Control> simpleCtrls, String tableName, boolean insertParentRecId) {
+	private String buildInsertSql(List<Control> simpleCtrls, List<Control> subFormCtrls, String tableName, boolean insertParentRecId) {
 		StringBuilder columnNames = new StringBuilder();
 		StringBuilder bindVars = new StringBuilder();
 		
@@ -400,6 +545,14 @@ public class FormDataManagerImpl implements FormDataManager {
 			bindVars.append("?, ");
 		}
 		
+		for (Control ctrl : subFormCtrls) {
+			SubFormControl sfCtrl = (SubFormControl)ctrl;
+			if (sfCtrl.isOneToOne() && sfCtrl.isInverse()) {
+				columnNames.append(sfCtrl.getDbColumnName()).append(", ");
+				bindVars.append("?, ");				
+			}
+		}
+		
 		columnNames.append("IDENTIFIER");
 		bindVars.append("?");
 		
@@ -411,7 +564,7 @@ public class FormDataManagerImpl implements FormDataManager {
 		return insertSql.toString();
 	}
 	
-	private String buildUpdateSql(List<Control> simpleCtrls, String tableName) {
+	private String buildUpdateSql(List<Control> simpleCtrls, List<Control> subFormCtrls, String tableName) {
 		if (simpleCtrls.isEmpty()) {
 			return "";
 		}
@@ -427,7 +580,15 @@ public class FormDataManagerImpl implements FormDataManager {
 			} else {
 				updateSql.append(ctrl.getDbColumnName()).append(" = ?, ");
 			}			
-		}		
+		}
+		
+		for (Control ctrl : subFormCtrls) {
+			SubFormControl sfCtrl = (SubFormControl)ctrl;
+			if (sfCtrl.isOneToOne() && sfCtrl.isInverse()) {
+				updateSql.append(ctrl.getDbColumnName()).append(" = ?, ");
+			}			
+		}
+		
 		updateSql.delete(updateSql.length() - 2, updateSql.length());
 		
 		updateSql.append(" WHERE IDENTIFIER = ?");
@@ -459,7 +620,12 @@ public class FormDataManagerImpl implements FormDataManager {
 		}		
 	}
 	
-	private void segregateControls(Container container, List<Control> simpleCtrls, List<Control> multiSelectCtrls, List<Control> subFormCtrls) {
+	private void segregateControls(
+			Container container, 
+			List<Control> simpleCtrls, 
+			List<Control> multiSelectCtrls, 
+			List<Control> subFormCtrls) {
+		
 		for (Control ctrl : container.getControlsMap().values()) {
 			if (ctrl instanceof SubFormControl) {
 				subFormCtrls.add(ctrl);
@@ -496,5 +662,47 @@ public class FormDataManagerImpl implements FormDataManager {
 		}
 		String deleteSql = deleteSqlBuilder.substring(0, deleteSqlBuilder.lastIndexOf(",")).concat(")");
 		jdbcDao.executeUpdate(deleteSql, toBeDeletedSfData);
+	}
+
+	private void extractSimpleValues(List<Control> ctrls, ResultSet rs, FormData formData) 
+	throws SQLException {
+		for (Control ctrl : ctrls) {
+			ControlValue ctrlValue = null;
+
+			if (ctrl instanceof FileUploadControl) {
+				String filename = rs.getString(ctrl.getDbColumnName() + "_NAME");
+				if (filename != null) {
+					String type = rs.getString(ctrl.getDbColumnName() + "_TYPE");
+					String fileId = rs.getString(ctrl.getDbColumnName() + "_ID");
+					ctrlValue = new ControlValue(ctrl, new FileControlValue(filename, type, fileId));
+				} else {
+					ctrlValue = new ControlValue(ctrl, null);
+				}
+			} else {
+				Object rsObj = null;
+				if (ctrl instanceof DatePicker) {
+					rsObj = rs.getTimestamp(ctrl.getDbColumnName());
+				} else {
+					rsObj = rs.getObject(ctrl.getDbColumnName());
+				}
+				
+				String value = ctrl.toString(rsObj);
+				ctrlValue = new ControlValue(ctrl, value);
+			}
+				
+			formData.addFieldValue(ctrlValue);
+		}		
+	}
+	
+	private boolean isGridControl(Control ctrl) {
+		if (ctrl instanceof MultiSelectControl || ctrl instanceof SubFormControl) {
+			return false;
+		}
+		
+		if (ctrl instanceof PageBreak || ctrl instanceof Label) {
+			return false;
+		}
+		
+		return ctrl.showInGrid();
 	}
 }

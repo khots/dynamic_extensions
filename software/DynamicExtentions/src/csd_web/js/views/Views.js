@@ -9,15 +9,17 @@ var Views = {
 					_.bindAll(this, 'render'); // fixes loss of context for
 					this.render();// self-rendering
 				},
+
 				loadForm : function() {
-
-					Routers.formEventsRouterPointer.navigate("loadCachedForm/"
-							+ $('#formCaption').val(), true);
-
+					Routers.formEventsRouterPointer
+						.navigate("loadCachedForm/" + $('#formCaption').val(), true);
 				},
+
 				saveForm : function(showMessage) {
 					if (!Utility.checkNameForCorrectness($('#formName').val())) {
-					  Utility.notify($("#notifications"), "Form Name should not contain special characters and white spaces", "error");
+					  Utility.notify(
+					    $("#notifications"), 
+					    "Form Name should not contain special characters and white spaces", "error");
 					  return;
 					}
 					// Save Model
@@ -25,8 +27,7 @@ var Views = {
 					this.populateControlsInForm();
 					$("#formWaitingImage").show();
 					// set form info from summary
-					this.model.setFormInformation(Main.mainTabBarView
-							.getFormSummaryView().getModel());
+					this.model.setFormInformation(Main.mainTabBarView.getFormSummaryView().getModel());
 					this.model.set({
 						formulae : GlobalMemory.formulae
 					});
@@ -43,67 +44,43 @@ var Views = {
                                           }
                                         }
                                        
-					this.model
-							.save(
-									{
-								    		save : "yes"
-									},
-									{
-										wait : true,
-										success : function(model, response) {
-											if (model.get("status") == "saved") {
+					this.model.save({
+					    save : "yes"
+					  },{
+					    wait : true,
+					    success : function(model, response) {
+					      if (model.get("status") == "saved") {
+					        Routers.updateCachedFormMethod(model);
+					        $("#formWaitingImage").hide();
 
-												Routers
-														.updateCachedFormMethod(model);
-												$("#formWaitingImage").hide();
-												var message = model
-														.get('caption')
-														+ " was saved successfully.";
-											/*	$("#popupMessageText").html(
-														message);
-												$("#dialog-message").dialog(
-														'open');
-												Main.mainTabBarView
-														.getFormSummaryView()
-														.displayFormInfo(
-																model
-																		.getFormInformation());*/
-			if (showMessage) {
-				Utility.notify($("#notifications"), message, "success");
-			}
+					        var message = model.get('caption') + " was saved successfully.";
+					        if (showMessage) {
+					          Utility.notify($("#notifications"), message, "success");
+					        }
 
-												// change from Save as to save
-												$('#saveForm').prop("value",
-														" Save  ")
+					        // change from Save as to save
+					        $('#saveForm').prop("value", " Save  ");
+					        model.updateControlIdProp(response.controlCollection);
+					      } else {
+					        $("#formWaitingImage").hide();
+       					        Utility.notify($("#notifications"), "Could not save the form successfully", "error");
+					      }
+					    },
+					  
+					    error : function(model, response) {
+					      $("#formWaitingImage").hide();
+       					      Utility.notify($("#notifications"), message, "success");
+					    }
+					  }
+					);
 
-											} else {
-												$("#formWaitingImage").hide();
-										/*		$("#popupMessageText")
-														.html(
-																"Could not save the form successfully.");
-												$("#dialog-message").dialog(
-														'open'); */
-            Utility.notify($("#notifications"), "Could not save the form successfully", "error");
-
-											}
-										},
-										error : function(model, response) {
-											$("#formWaitingImage").hide();
-										/*	$("#popupMessageText")
-													.html(
-															"Could not save the form successfully.");
-											$("#dialog-message").dialog('open'); */
-            Utility.notify($("#notifications"), message, "success");
-										}
-
-									});
                                         this.model.set('controlObjectCollection', ctrlColl);
                                         for (var i = 0; i < this.model.get('controlCollection').length; ++i) {
                                           var ctrl = this.model.get('controlCollection')[i];
                                           if (ctrl.type == 'subForm') {
                                             var sf = ctrl.subForm;
                                             sf.set('controlObjectCollection', sfCtrlColl[ctrl.controlName]);
-                                          }
+					  }
                                         }
 				},
 
@@ -112,16 +89,19 @@ var Views = {
 					this.populateControlsInForm();
 					this.model.setFormInformation(Main.mainTabBarView
 							.getFormSummaryView().getModel());
-					  $('#previewFrame').hide();
-					  $('#preview').empty();
-					  var deJson = getDEJson({json: this.model});
-					  this.form = new edu.common.de.Form({
+					$('#previewFrame').hide();
+					$('#preview').empty();
+					
+					var scope = parent.angular.element(".container.os-de-form").scope()
+					var deJson = getDEJson({json: this.model});
+					this.form = new edu.common.de.Form({
 						formDef       : deJson,
 						formDiv       : 'preview',
-						showActionBtns: false
-					  });
-					  this.form.render();
-					  $('#formWaitingImage').hide();
+						showActionBtns: false,
+						dateFormat    : scope.global.dateFmt 
+					});
+					this.form.render();
+					$('#formWaitingImage').hide();
 				},
 
 				loadModelInSession : function() {
@@ -161,7 +141,7 @@ var Views = {
 					var controlsOrder = this.model.get('controlsOrder');
 					var controlObjectCollection = this.model
 							.get('controlObjectCollection');
-					for (cntr = 0; cntr < controlsOrder.length; cntr++) {
+					for (var cntr = 0; cntr < controlsOrder.length; cntr++) {
 
 						var controlName = controlsOrder[cntr];
 						var control = controlObjectCollection[controlName];
@@ -270,7 +250,8 @@ var Views = {
 					"click #addPv" : "addPv",
 					"click #deletePv" : "deletePv",
 					"click #changeControlButtonid" : "changeControl",
-					"keyup #controlCaption" : "setAttributeName"
+					"keyup #controlCaption" : "setAttributeName",
+					"change select[name='placement-position']": "showHidePlacementControl"
 				},
 
 				setAttributeName : function(event) {
@@ -322,33 +303,25 @@ var Views = {
 
 				deleteControl : function(event) {
 					GlobalMemory.currentBufferControlModel = this.model;
-					$('#dialogMessageText').html(
-							'Do you wish to delete this Control?');
-					$("#general-dialog")
-							.dialog(
-									{
-										buttons : {
-											Yes : function() {
-												$('#deleteControlButtonid')
-														.prop("disabled", true);
-												$('#createControlButtonid')
-														.prop("disabled", true);
-												$('#addPv').prop("disabled",
-														true);
-												$('#deletePv').prop("disabled",
-														true);
-												ControlBizLogic
-														.deleteControl(GlobalMemory.currentBufferControlModel);
-												$(this).dialog("close");
-												Main.currentFieldView.destroy();
-											},
-											No : function() {
-												$(this).dialog("close");
-											}
-										}
-									});
+					$('#dialogMessageText').html('Do you wish to delete this Control?');
+					$("#general-dialog").dialog({
+						buttons : {
+							Yes : function() {
+								$('#deleteControlButtonid').prop("disabled", true);
+								$('#createControlButtonid').prop("disabled", true);
+								$('#addPv').prop("disabled", true);
+								$('#deletePv').prop("disabled",	true);
+								ControlBizLogic.deleteControl(GlobalMemory.currentBufferControlModel);
+								$(this).dialog("close");
+								Main.currentFieldView.destroy();
+								Main.formView.saveForm(false);
+							},
+							No : function() {
+								$(this).dialog("close");
+							}
+						}
+					});
 					$("#general-dialog").dialog("open");
-
 				},
 
 				enableDeleteButton : function() {
@@ -382,8 +355,8 @@ var Views = {
 					});
 
 					this.populateFieldsInModel(newModel);
-					var validationMessages = newModel.validate(newModel
-							.toJSON());
+					var validationMessages = newModel.validate(newModel.toJSON());
+					this.setPlacement();
 
 					/*
 					 * if (this.model.get('editName') == undefined &&
@@ -405,10 +378,10 @@ var Views = {
 					  validationMessages = this.validatePvDataType(newModel, "INTEGER")
 					  
 					} else if (newModel.attributes.dataType == 'FLOAT') {
-                      validationMessages = this.validatePvDataType(newModel, "FLOAT")
+			                      validationMessages = this.validatePvDataType(newModel, "FLOAT")
 					} else if (newModel.attributes.dataType == 'BOOLEAN') {
 					  validationMessages = this.validatePvDataType(newModel, "BOOLEAN")
-				    }
+				    	}
 					
 					if (validationMessages.length == 0) {
 						this.populateFields();
@@ -466,8 +439,8 @@ var Views = {
 										"controlName",
 										this.model.get('controlName'));
 							}
-							Main.formView.saveForm(false);
 						}
+						Main.formView.saveForm(false);
 
 						// add page break
 						var addPageBreak = $(
@@ -481,6 +454,85 @@ var Views = {
 					}
 
 					this.showMessages(validationMessages, status);
+				},
+
+				setPlacement: function() {
+					var formModel = Main.formView.getFormModel();
+					var controlRows = formModel.get('controlRows');
+					var placementControlName = $('select[name="placement-control"]').val();
+					var position = $('select[name="placement-position"]').val();
+					if (!position  || (!placementControlName && position != "LAST_ROW")) {
+						return;
+					}
+
+					var rowNum = 0;
+					if (!!placementControlName) {
+						rowNum = formModel.getControl(placementControlName).get("sequenceNumber");
+					}
+
+					var ctrName = this.model.get("controlName");
+					var seqNum = this.model.get("sequenceNumber");
+					if (controlRows[seqNum]) {
+						var index = controlRows[seqNum].indexOf(ctrName);
+						if (index != -1) {
+							controlRows[seqNum].splice(index, 1);
+						}
+						if (controlRows[seqNum].length == 0) {
+							delete controlRows[seqNum];
+						}
+					}
+					
+					switch (position) {
+						case 'LAST_ROW':
+							var keys = Object.keys(controlRows);
+							if (keys.length > 0) {
+								rowNum = keys[keys.length -1];
+							}
+							rowNum++;
+							break;
+						case 'ROW_BEFORE':
+							if (rowNum > 1 && controlRows[rowNum -1] == undefined) {
+								rowNum--;
+							}
+							break;
+						case 'ROW_AFTER':
+							rowNum++;
+							break;
+						case 'SAME_ROW':
+							controlRows[rowNum].push(this.model.get("controlName"));
+							this.model.set({'sequenceNumber': rowNum});
+							return;
+					}
+					
+					var controlNames = [this.model.get("controlName")];
+					while(true) {
+						var temp = controlRows[rowNum]
+						controlRows[rowNum] = controlNames;
+						for (var j = 0; j < controlNames.length; j++) {
+							if (controlNames[j] == this.model.get("controlName")) {
+								this.model.set({'sequenceNumber': rowNum});
+							} else {
+								formModel.getControl(controlNames[j]).set({'sequenceNumber': rowNum});
+							}
+						}
+
+						if (temp == undefined) {
+							break;
+						}
+
+						controlNames = temp;
+						rowNum++;
+					}
+
+				},
+
+				showHidePlacementControl: function() {
+					var position = $('select[name="placement-position"]').val();
+					if (!position || position == 'LAST_ROW') {
+						$('select[name="placement-control"]').hide();
+					} else {
+						$('select[name="placement-control"]').show();
+					}
 				},
 
 				validatePvDataType : function (newModel, dataType) {
@@ -704,8 +756,39 @@ var Views = {
 				},
 
 				render : function() {
-					this.$el.html(Mustache.to_html(this.model.get('template'),
-							this.model.toJSON()));
+					var formModel = Main.formView.getFormModel();
+					this.$el.html(Mustache.to_html(this.model.get('template'), this.model.toJSON()));
+
+					var isSubFormControl = this.model.get("isSubFormControl");
+					if (!isSubFormControl) { 
+						var controlsOrder = formModel.get('controlsOrder');
+						var ControlCollection = formModel.get('controlObjectCollection');
+						for (var i = 0; i < controlsOrder.length; i++) {
+							var control = ControlCollection[controlsOrder[i]]
+							if (control == undefined || this.model.cid == control.cid) {
+								continue;
+							}
+
+							$('select[name="placement-control"]')
+								.append($("<option/>")
+								.prop("value", controlsOrder[i])
+								.append(control.get("caption")));
+						}
+
+						$('select[name="placement-control"]').hide();
+						if (this.model.get("copy")) {
+							var selectedId = Main.treeView.getTree().getSelectedItemId();
+							var selectedControlName = Main.treeView.getTree().getUserData(selectedId, "controlName");
+							$('select[name="placement-control"]').val(selectedControlName);
+							$('select[name="placement-position"]').val('SAME_ROW');	
+							$('select[name="placement-control"]').show();
+						} else if (controlsOrder.indexOf(this.model.get("controlName")) == -1) {
+							$('select[name="placement-position"]').val('LAST_ROW');	
+						}
+					} else {
+						$("#field-placement", this.$el).css("display", "none");
+					}
+
 					// clear messages div
 					$("#messagesDiv").html("");
 					$("#messagesDiv").removeClass('success');
@@ -1781,8 +1864,7 @@ var Views = {
 						$("#popupMessageText").html(message);
 						$("#dialog-message").dialog('open');
 					} else {
-						location.href = "../../ExportFormAction.de?containerId="
-								+ formId;
+						location.href = "../../rest/ng/forms/" + formId + "/definition-zip";
 					}
 
 				},
@@ -1989,16 +2071,20 @@ var Views = {
 };
 
 var getDEJson = function (args) {
-  var rows = new Array();
-  var columns = null;
-  var prevRow = null;
-  var rowNo = 0;
-  var colNo = 0;
+  var rows = {};
+  var controlsOrder = args.json.get('controlsOrder');
+  var controlObjectCollection = args.json.get('controlObjectCollection');
 
-  _.each(args.json.attributes.controlObjectCollection, function(field) {
-	    // Create NewField with appropriate new DE attributes
-    field = field.attributes;
-	var newField = getNewField({field : field});
+  for (var cntr = 0; cntr < controlsOrder.length; cntr++) {
+    var controlName = controlsOrder[cntr];
+    var control = controlObjectCollection[controlName];
+    if (control == undefined) {
+      continue;
+    }
+
+    // Create NewField with appropriate new DE attributes
+    field = control.attributes;
+    var newField = getNewField({field : field});
   
     // Adding control specific properties 
     if (newField.type == 'numberField' || newField.type == 'stringTextField' || newField.type == 'textArea') {
@@ -2032,12 +2118,12 @@ var getDEJson = function (args) {
 
       newField['pvs'] = pvs;
     } else if (newField.type == 'datePicker') {
-      newField['format'] = field.format;
+      newField['format'] = Utility.dateFormats[field.format];
       newField['showCalendar'] = field.showCalendar;
       newField['defaultType'] = field.defaultType;
       newField['defaultValue'] = field.defaultValue;
     } else if (newField.type == 'booleanCheckbox') {
-      newField['defaultChecked'] = field.defaultChecked;
+      newField['defaultChecked'] = field.isChecked;
     } else if (newField.type == 'label') {
       newField['heading'] = field.heading;
       newField['note'] = field.note;
@@ -2045,20 +2131,23 @@ var getDEJson = function (args) {
       newField['type'] = newField.fancyControlType;
     }
 
-    if (prevRow == null || prevRow != field.sequenceNumber) {
-      columns = new Array();
-      colNo = 0;
-      rows[rowNo++] = columns;
-      prevRow = field.sequenceNumber;
+    var columns = rows[field.sequenceNumber];
+    if (columns == undefined) {
+      columns = [];
+      rows[field.sequenceNumber] = columns;
     }
+    columns.push(newField);
+  };
 
-    columns[colNo++] = newField;
-  });
+  var rowList = [];
+  $.each(rows, function(key, value) {
+    rowList.push(value);
+  })
   
   var newJson = {};
   newJson['name'] = args.json.attributes.formName;
   newJson['caption'] = args.json.attributes.caption;
-  newJson['rows'] = rows;
+  newJson['rows'] = rowList;
 
   return newJson;
 };
@@ -2082,12 +2171,14 @@ var getNewField = function(args) {
   newField['conceptDefinition'] = field.conceptDefinition;
   newField['validationRules'] = field.validationRules || [];
   newField['fancyControlType'] = field.fancyControlType;
+  newField['defaultValue'] = field.defaultPv
 
   // Correcting the type properties 
   if (field.type == 'numericField') {
     newField['type'] = 'numberField';
   } else if (field.type == 'radioButton') {
-    newField['type'] = 'radiobutton';	
+    newField['type'] = 'radiobutton';
+    newField['optionsPerRow'] = field.optionsPerRow;	
   } else if (field.type == 'checkBox') {
     newField['type'] = 'booleanCheckbox';	
   } else if (field.type == 'multiselectBox' || field.type == 'listBox') {
@@ -2096,6 +2187,7 @@ var getNewField = function(args) {
     newField['type'] = 'combobox'
   } else if  (field.type == 'multiselectCheckBox') { 
     newField['type'] = 'checkbox'
+    newField['optionsPerRow'] = field.optionsPerRow;
   } else if (field.type == 'subForm') {
     newField = new getDEJson({json :field.subForm});
     newField['type'] = field.type;

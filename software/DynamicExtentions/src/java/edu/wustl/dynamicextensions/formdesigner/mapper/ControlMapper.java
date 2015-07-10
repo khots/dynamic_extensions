@@ -80,7 +80,7 @@ public class ControlMapper {
 	 * @param control
 	 * @return
 	 */
-	private String getControlType(Control control) {
+	private String getControlType(Control control) {		
 		String type = "";
 		if (control instanceof StringTextField) {
 			type = CSDConstants.STRING_TEXT_FIELD;
@@ -110,14 +110,15 @@ public class ControlMapper {
 			} else {
 				type = CSDConstants.LABEL;
 			}
-		} else if (control instanceof SubFormControl) {
-			type = CSDConstants.SUB_FORM;
 		} else if (control instanceof PageBreak) {
-			type = CSDConstants.PAGE_BREAK;
-		}else {
+			type = CSDConstants.PAGE_BREAK;			
+		} else {
 			Map<String, Object> props = control.getProps();
-			type = props.get("type").toString();
+			if (props != null && props.containsKey("type")) {
+				type = props.get("type").toString();
+			}			
 		}
+		
 		return type;
 	}
 

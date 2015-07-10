@@ -89,4 +89,9 @@ public class ComboBox extends SelectControl implements Serializable {
 		writeElement(writer, "minQueryChars", getMinQueryChars());				
 		writeElementEnd(writer, "dropDown");		
 	}
+
+	@Override
+	public ValidationStatus validate(Object value) {
+		return validateSingle(value);
+	}
 }

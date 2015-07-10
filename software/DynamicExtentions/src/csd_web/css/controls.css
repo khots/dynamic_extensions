@@ -24,6 +24,15 @@
 	width: 52%;
 }
 
+#field-placement .textDropDown {
+  width: 100%;
+}
+
+#field-placement .propertiesContainerCell.drop-down {
+  width: 38%;
+  padding-left: 10px;
+}
+
 .textBoxTiny{
 	width: 25%;
 }
@@ -42,14 +51,14 @@
 	color: #505050
 }
 
-.btn {
+/*.btn {
 	font-size: 12px;
 	padding: 1px;
 	font-family: Helvetica, Arial, sans-serif;
 	font-size: 12px;
 	font-weight: bold;
 	color: #505050
-}
+}*/
 
 .text_normal {
 	font-family: Helvetica, Arial, sans-serif;
@@ -179,7 +188,6 @@
 .propertiesTextBoxContainer {
 	width: 40%;
 }
-
 
 # CSS RELATED TO PREVIEW OF NEW DE MODEL
 
@@ -398,10 +406,10 @@ label {
   border-top: 5px;
 }
 
-.form-group .btn {
+/*.form-group .btn {
   height: 30px !important;
   width: 30px !important;
-}
+}*/
 
 .modal-footer .btn {
   height: 33px !important;

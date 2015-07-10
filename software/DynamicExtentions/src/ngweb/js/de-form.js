@@ -2,6 +2,11 @@ var edu = edu || {};
 edu.common = edu.common || {};
 edu.common.de = edu.common.de || {};
 
+edu.common.de.id = 0;
+edu.common.de.nextUid = function(el) {
+  return ++edu.common.de.id;
+}
+
 edu.common.de.RequiredValidator = function(field, dataEl) {
   this.validate = function() {
     var valid = false;
@@ -156,16 +161,18 @@ edu.common.de.Form = function(args) {
   this.fileDownloadUrl = args.fileDownloadUrl;
   this.appData = args.appData;
   this.dateFormat = args.dateFormat;
+
+  this.customHdrs = args.customHdrs || {};
   
   if (!this.formDef && this.formDefUrl) {
     var url = this.formDefUrl.replace(":formId", this.formId);
-    this.formDefXhr = $.ajax({type: 'GET', url: url});
+    this.formDefXhr = $.ajax({type: 'GET', url: url, headers: this.customHdrs});
   }
 
   if (this.recordId && !this.formData && this.formDataUrl) {
     var url = this.formDataUrl.replace(":formId", args.id)
                               .replace(":recordId", args.recordId);
-    this.formDataXhr = $.ajax({type: 'GET', url: url});
+    this.formDataXhr = $.ajax({type: 'GET', url: url, headers: this.customHdrs});
   }
 
   this.render = function() {
@@ -230,11 +237,6 @@ edu.common.de.Form = function(args) {
     var caption = args.showTitle == false ? undefined : this.formDef.caption;
     var panel = edu.common.de.Utility.panel(caption, formCtrls, 'default');
     this.formDiv.append(panel);
-
-    if (this.formData != undefined) {
-      this.formData = JSON.parse(this.formData);
-    }
-
     this.setValue(this.formData);
   };
 
@@ -354,9 +356,11 @@ edu.common.de.Form = function(args) {
     $.ajax({
       type: method,
       url: url,
+      headers: this.customHdrs,
+      contentType: 'application/json',
+      dataType: 'json',
       data: JSON.stringify(formData)
     }).done(function(data) { 
-      data = JSON.parse(data);
       that.recordId = data.id;
       if (args.onSaveSuccess) {
         args.onSaveSuccess(data);     
@@ -437,8 +441,7 @@ edu.common.de.FieldFactory = {
     var fieldObj;
     idx = idx || "";
 
-    var id = 'de-' + field.name + "-" + idx;
-
+    var id = 'de-' + field.name + "-" + edu.common.de.nextUid();
     if (field.type == 'stringTextField') {
       fieldObj = new edu.common.de.TextField(id, field, args);
     } else if (field.type == 'numberField') {
@@ -475,7 +478,8 @@ edu.common.de.FieldFactory = {
 
 edu.common.de.TextField = function(id, field) {
   this.inputEl = null;
-  this.validator;
+
+  this.validator = null;
 
   this.render = function() {
     this.inputEl = $("<input/>")
@@ -628,18 +632,20 @@ edu.common.de.TextArea = function(id, field) {
   };
 };
 
-edu.common.de.DatePicker = function(id, field) {
+edu.common.de.DatePicker = function(id, field, args) {
   this.inputEl = null;
   this.dateEl = null;
   this.timeEl = null;
   this.validator;
 
+  this.minWidth = 225;
+
   this.render = function() {
     this.dateEl = $("<input/>")
-      .prop({id: id, type: 'text'})
+      .prop({id: id, type: 'text', title: field.toolTip})
       .addClass("form-control");
 
-    var dateField = $("<div/>").addClass("plus-addon plus-addon-input-right de-date-picker")
+    var dateField = $("<div/>").addClass("de-addon de-addon-input-right de-date-picker")
       .append(this.dateEl)
       .append($("<span/>").addClass("glyphicon glyphicon-calendar"));
 
@@ -648,14 +654,14 @@ edu.common.de.DatePicker = function(id, field) {
 
     var format = field.format;
     if (format && format.indexOf('HH:mm') != -1) {
-      dateFmt = dateFormat.concat(" HH:mm");
+      dateFmt = args.dateFormat.concat(" HH:mm");
       this.timeEl = $("<input/>")
-        .prop({id: 'time', type: 'text'})
+        .prop({id: 'time', type: 'text', title: field.toolTip})
         .addClass("form-control");
 
       dateField.css("width","59%");
 
-      var timeField = $("<div/>").addClass("plus-addon plus-addon-input-right de-time-picker")
+      var timeField = $("<div/>").addClass("de-addon de-addon-input-right de-time-picker")
         .append(this.timeEl)
         .append($("<span/>").addClass("glyphicon glyphicon-time"));
 
@@ -681,7 +687,7 @@ edu.common.de.DatePicker = function(id, field) {
     }
 
     this.dateEl.datepicker({
-      format: typeof dateFormat == "undefined" ? format : dateFormat,
+      format: typeof args.dateFormat == "undefined" ? format : args.dateFormat,
       autoclose: true,
       minViewMode: format});
 
@@ -825,6 +831,10 @@ edu.common.de.SelectField = function(id, field) {
     for (var i = 0; i < field.pvs.length; ++i) {
       var pv = field.pvs[i];
       this.inputEl.append($("<option/>").prop("value", pv.value).append(pv.value));
+    }
+
+    if (field.defaultValue != undefined) {
+      this.inputEl.val(field.defaultValue.value);
     }
 
     return this.inputEl;
@@ -1298,8 +1308,11 @@ edu.common.de.FileUploadField = function(id, field, args) {
 
     this.uploadBtn = $("<input/>").attr({name: "file", type: "file", 'data-url': uploadUrl});
     uploadIcon.append(this.uploadBtn);
+
     this.uploadBtn.fileupload({
       dataType: 'json',
+
+      headers: args.customHdrs || {},
 
       done: function(e, data) {
         var value = {
@@ -1570,7 +1583,7 @@ edu.common.de.Extend = function(props) {
   return child;
 };
 
-edu.common.de.LookupField = function(params) {
+edu.common.de.LookupField = function(params, callback) {
   this.inputEl = null;
 
   this.control = null;
@@ -1615,6 +1628,10 @@ edu.common.de.LookupField = function(params) {
     } else {
       that.value = '';
     }
+
+    if (typeof callback == "function") {
+      callback(selected);
+    }
   };
 
   var initSelection = function(elem, callback) {
@@ -1648,8 +1665,10 @@ edu.common.de.LookupField = function(params) {
   this.postRender = function() {
     this.control = new Select2Search(this.inputEl);
     this.control.onQuery(qFunc).onChange(onChange);
-    this.control.setValue(this.value);
     this.control.onInitSelection(initSelection).render();
+    if (this.value) {
+      this.control.setValue(this.value);
+    }
   };
 
   this.getName = function() {
@@ -1670,7 +1689,7 @@ edu.common.de.LookupField = function(params) {
       val = val.id;
     }
 
-    return {name: field.name, value: val ? val : ''};
+    return {name: field.name, value: val};
   };
 
   this.getDisplayValue = function() {
@@ -1686,7 +1705,7 @@ edu.common.de.LookupField = function(params) {
 
   this.setValue = function(recId, value) {
     this.recId = recId;
-    this.value = value ? value : '';
+    this.value = value; // ? value : '';
     if (this.control) {
       this.control.setValue(value);
     }
@@ -1709,7 +1728,11 @@ edu.common.de.LookupField = function(params) {
   };
 
   this.search = function(qTerm) {
-    return this.svc.getEntities(qTerm);
+    var searchFilters = {};
+    if (params) {
+      searchFilters = params.searchFilters || {};
+    }
+    return this.svc.getEntities(qTerm, searchFilters);
   };
 };
 
@@ -1718,42 +1741,70 @@ edu.common.de.LookupField.extend = edu.common.de.Extend;
 edu.common.de.LookupSvc = function(params) {
   var entitiesMap = {};
  
-  var defaultList = [];
+  var defaultList = {};
+
+  var xhrMap = {};
 
   var defaultValue;
 
-  this.getEntities = function(queryTerm) {
+  this.getEntities = function(queryTerm, searchFilters) {
     var deferred = $.Deferred();
-    if (!queryTerm && defaultList.length > 0) {
-      deferred.resolve(defaultList);
-      return deferred.promise();
+
+    var resultKey = '_default';
+    if (!queryTerm) {
+      if (searchFilters) {
+        var keys = Object.keys(searchFilters).sort();
+        if (keys.length > 0) {
+          resultKey = '';
+        }
+
+        for (var i = 0; i < keys.length; ++i) {
+          resultKey += keys[i] + "__" + searchFilters[keys[i]] + '__';
+        }
+      }
+
+      if (defaultList[resultKey]) {
+        deferred.resolve(defaultList[resultKey]);
+        return deferred.promise();
+      }
     }
 
     var baseUrl = this.getApiUrl();
     var xhr;
     if (queryTerm) {      
-      xhr = $.ajax({type: 'GET', url: baseUrl, data: this.searchRequest(queryTerm)});
-    } else if (this.getAllXhr) {
-      xhr = this.getAllXhr;
+      xhr = $.ajax({
+        type: 'GET', 
+        url: baseUrl, 
+        headers: this.getHeaders(), 
+        data: this.searchRequest(queryTerm, searchFilters)
+      });
+    } else if (xhrMap[resultKey]) {
+      xhr = xhrMap[resultKey];
     } else {
-      xhr = this.getAllXhr = $.ajax({type: 'GET', url: baseUrl, data: this.searchRequest(queryTerm)});
+      xhr = xhrMap[resultKey] = $.ajax({
+        type: 'GET', 
+        url: baseUrl, 
+        headers: this.getHeaders(), 
+        data: this.searchRequest(queryTerm, searchFilters)});
     }
    
    
     var that = this;
     xhr.done(
       function(data) {
-        var result = that.formatResults(data);
+        var result = that.formatResults(data, queryTerm);
         if (!queryTerm) {
-          defaultList = result;
+          defaultList[resultKey] = result;
         }
 
         deferred.resolve(result);
+        delete xhrMap[resultKey];
       }
     ).fail(
       function(data) {
         alert("Failed to load entities list");
         deferred.resolve([]);
+        delete xhrMap[resultKey];
       }
     );
 
@@ -1777,7 +1828,7 @@ edu.common.de.LookupSvc = function(params) {
 
     var that = this;
     var baseUrl = this.getApiUrl();
-    $.ajax({type: 'GET', url: baseUrl + id})
+    $.ajax({type: 'GET', url: baseUrl + id, headers: this.getHeaders()})
       .done(function(data) {
         var result = that.formatResult(data);
         entitiesMap[id] = result;

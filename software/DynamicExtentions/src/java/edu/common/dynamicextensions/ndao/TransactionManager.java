@@ -25,8 +25,18 @@ public class TransactionManager {
 		txnMgr = new DataSourceTransactionManager(ds);
 	}
 	
-	public static synchronized TransactionManager getInstance(DataSource ds) {
-		if (ds != null && instance == null) {
+	private TransactionManager(PlatformTransactionManager txnMgr) {
+		this.txnMgr = txnMgr;
+	}
+	
+	public static synchronized TransactionManager getInstance(DataSource ds, PlatformTransactionManager txnMgr) {
+		if (instance != null) {
+			return instance;
+		}
+		
+		if (txnMgr != null) {
+			instance = new TransactionManager(txnMgr);
+		} else if (ds != null) {
 			instance = new TransactionManager(ds);
 		}
 		

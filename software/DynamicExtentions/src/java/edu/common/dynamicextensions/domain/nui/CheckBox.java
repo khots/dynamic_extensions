@@ -95,4 +95,26 @@ public class CheckBox extends Control implements Serializable {
 		writeElement(writer, "checked", isDefaultValueChecked());			
 		writeElementEnd(writer, "booleanCheckBox");		
 	}
+
+	@Override
+	public ValidationStatus validate(Object value) {
+		boolean empty = (value == null || value.toString().trim().isEmpty());
+		if (isMandatory() && empty) {
+			return ValidationStatus.NULL_OR_EMPTY;
+		}
+		
+		if (empty) {
+			return ValidationStatus.OK;
+		}
+		
+		String valStr = value.toString().trim();
+		if (!valStr.equals("true") && 
+			!valStr.equals("false") && 
+			!valStr.equals("1") && 
+			!valStr.equals("0")) {
+			return ValidationStatus.INVALID_VALUE;
+		}
+		
+		return ValidationStatus.OK;		
+	}
 }

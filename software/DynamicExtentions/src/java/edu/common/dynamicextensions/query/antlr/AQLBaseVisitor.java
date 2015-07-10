@@ -98,14 +98,6 @@ public class AQLBaseVisitor<T> extends AbstractParseTreeVisitor<T> implements AQ
 	 * The default implementation returns the result of calling
 	 * {@link #visitChildren} on {@code ctx}.
 	 */
-	@Override public T visitNthChildFilterExpr(@NotNull AQLParser.NthChildFilterExprContext ctx) { return visitChildren(ctx); }
-
-	/**
-	 * {@inheritDoc}
-	 * <p/>
-	 * The default implementation returns the result of calling
-	 * {@link #visitChildren} on {@code ctx}.
-	 */
 	@Override public T visitMonthsDiffFunc(@NotNull AQLParser.MonthsDiffFuncContext ctx) { return visitChildren(ctx); }
 
 	/**
@@ -114,7 +106,23 @@ public class AQLBaseVisitor<T> extends AbstractParseTreeVisitor<T> implements AQ
 	 * The default implementation returns the result of calling
 	 * {@link #visitChildren} on {@code ctx}.
 	 */
+	@Override public T visitNthChildFilterExpr(@NotNull AQLParser.NthChildFilterExprContext ctx) { return visitChildren(ctx); }
+
+	/**
+	 * {@inheritDoc}
+	 * <p/>
+	 * The default implementation returns the result of calling
+	 * {@link #visitChildren} on {@code ctx}.
+	 */
 	@Override public T visitCrossTabExpr(@NotNull AQLParser.CrossTabExprContext ctx) { return visitChildren(ctx); }
+
+	/**
+	 * {@inheritDoc}
+	 * <p/>
+	 * The default implementation returns the result of calling
+	 * {@link #visitChildren} on {@code ctx}.
+	 */
+	@Override public T visitReportExpr(@NotNull AQLParser.ReportExprContext ctx) { return visitChildren(ctx); }
 
 	/**
 	 * {@inheritDoc}

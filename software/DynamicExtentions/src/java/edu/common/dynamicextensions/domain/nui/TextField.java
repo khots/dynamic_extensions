@@ -34,6 +34,15 @@ public abstract class TextField extends Control implements Serializable {
 	public void setDefaultValue(String defaultValue) {
 		this.defaultValue = defaultValue;
 	}
+	
+	@Override
+	public ValidationStatus validate(Object value) {
+		if (isMandatory() && (value == null || value.toString().trim().isEmpty())) {
+			return ValidationStatus.NULL_OR_EMPTY;
+		}
+		
+		return ValidationStatus.OK;
+	}
 
 	@Override
 	public int hashCode() {

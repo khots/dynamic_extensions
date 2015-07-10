@@ -1,115 +1,96 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <head>
+    <title>CSD</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
-<link rel="stylesheet" href="../../ngweb/external/jquery/css/chosen.min.css">
-<link rel="stylesheet" href="../../ngweb/external/jquery/css/chosen-sprite.png">
-<link rel="stylesheet" href="../../ngweb/external/bootstrap/css/bootstrap.min.css">
-<link rel="stylesheet" href="../../ngweb/external/eternicode/css/datepicker.css">
-<link rel="stylesheet" type="text/css" href="../../ngweb/external/select2/css/select2.css">
-<link rel="stylesheet" type="text/css" href="../../ngweb/external/select2/css/select2-bootstrap.css">
+    <link rel="stylesheet" type="text/css" href="../../ngweb/external/jquery/css/chosen.min.css">
+    <link rel="stylesheet" type="text/css" href="../../ngweb/external/jquery/css/chosen-sprite.png">
+    <link rel="stylesheet" type="text/css" href="../../ngweb/external/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="../../ngweb/external/bootstrap/css/bootstrap-theme.min.css">
+    <link rel="stylesheet" type="text/css" href="../../ngweb/external/bootstrap3-timepicker/css/bootstrap-timepicker.min.css">
+    <link rel="stylesheet" type="text/css" href="../../ngweb/external/eternicode/css/datepicker.css">
+    <link rel="stylesheet" type="text/css" href="../../ngweb/external/select2/css/select2.css">
+    <link rel="stylesheet" type="text/css" href="../../ngweb/external/select2/css/select2-bootstrap.css">
 
-<script type="text/javascript" src="../../ngweb/external/jquery/jquery.min.js"></script>
-<script type="text/javascript" src="../../ngweb/external/jquery/jquery.ui.widget.js"></script>
-<script type="text/javascript" src="../../ngweb/external/jquery/jquery.iframe-transport.js"></script>
-<script type="text/javascript" src="../../ngweb/external/jquery/jquery.fileupload.js"></script>
-<script type="text/javascript" src="../../ngweb/external/jquery/chosen.jquery.min.js"></script>
-<script type="text/javascript" src="../../ngweb/external/select2/select2.min.js"></script>
-<script type="text/javascript" src="../../ngweb/external/underscorejs/underscore-min.js"></script>
-<script type="text/javascript" src="../../ngweb/external/backbonejs/backbone-min.js"></script>
-<script type="text/javascript" src="../../ngweb/external/bootstrap/js/bootstrap.min.js"></script>
-<script type="text/javascript" src="../../ngweb/external/bootstrap/js/bootstrap-theme.min.css"></script>
-<script type="text/javascript" src="../../ngweb/external/bootstrap/js/bootbox.min.js"></script>
-<script type="text/javascript" src="../../ngweb/external/eternicode/js/bootstrap-datepicker.js"></script>
-<script type="text/javascript" src="../../ngweb/js/utility.js"></script>
+    <link rel="stylesheet" type="text/css" href="../../ngweb/css/app.css">
+    <link rel="stylesheet" type="text/css" href="../../ngweb/external/de/css/de.css">
+    <link rel="stylesheet" type="text/css" href="../css/controls.css">
+    <link rel="stylesheet" type="text/css" href="../css/messages.css">
+    <link rel="stylesheet" type="text/css" href="../css/chosen.css">
+    <link rel="stylesheet" type="text/css" href="../css/jquery-ui.css">
+    <link rel="stylesheet" type="text/css" href="../dhtmlxSuite_v35/dhtmlxTabbar/codebase/dhtmlxtabbar.css">
+    <link rel="stylesheet" type="text/css" href="../dhtmlxSuite_v35/dhtmlxTree/codebase/dhtmlxtree.css">
+    <link rel="stylesheet" type="text/css" href="../dhtmlxSuite_v35/dhtmlxGrid/codebase/dhtmlxgrid.css" />
+    <link rel="stylesheet" type="text/css" href="../css/dhtmlxgrid_kspl_csdDesignMode.css" />
+    <link rel="stylesheet" type="text/css" href="../css/dhtmlx_drag_kspl_csdDesignMode.css" />
+    <link rel="stylesheet" type="text/css" href="../dhtmlxSuite_v35/dhtmlxGrid/codebase/skins/dhtmlxgrid_dhx_skyblue.css" />
+    <link rel="stylesheet" type="text/css" href="../dhtmlxSuite_v35/dhtmlxGrid/codebase/ext/dhtmlxgrid_pgn_bricks.css">
+    <link rel="stylesheet" type="text/css" href="../css/carousel.css" media="screen" />
 
-<link rel="stylesheet" type="text/css" href="../../ngweb/css/app.css">
-<link rel="stylesheet" type="text/css" href="../../ngweb/external/de/css/de.css">
-<link rel="stylesheet" type="text/css" href="../css/controls.css">
-<link rel="stylesheet" type="text/css" href="../css/messages.css">
-<link rel="stylesheet" type="text/css" href="../css/chosen.css">
+    <script type="text/javascript" src="../../ngweb/external/jquery/jquery.min.js"></script>
+    <script type="text/javascript" src="../../ngweb/external/jquery/jquery.ui.widget.js"></script>
+    <script type="text/javascript" src="../../ngweb/external/jquery/jquery.iframe-transport.js"></script>
+    <script type="text/javascript" src="../../ngweb/external/jquery/jquery.fileupload.js"></script>
+    <script type="text/javascript" src="../../ngweb/external/jquery/chosen.jquery.min.js"></script>
+    <script type="text/javascript" src="../../ngweb/external/select2/select2.min.js"></script>
+    <script type="text/javascript" src="../../ngweb/external/underscorejs/underscore-min.js"></script>
+    <script type="text/javascript" src="../../ngweb/external/backbonejs/backbone-min.js"></script>
+    <script type="text/javascript" src="../../ngweb/external/bootstrap/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="../../ngweb/external/bootstrap/js/bootbox.min.js"></script>
+    <script type="text/javascript" src="../../ngweb/external/eternicode/js/bootstrap-datepicker.js"></script>
+    <script type="text/javascript" src="../../ngweb/external/bootstrap3-timepicker/bootstrap-timepicker.min.js"></script> 
+    <script type="text/javascript" src="../../ngweb/js/utility.js"></script>
 
-<script type="text/javascript" src="../js/jquery-ui.js"></script>
-<link rel="stylesheet" type="text/css" href="../css/jquery-ui.css">
-<script type="text/javascript" src="../js/json2.js"></script>
-<script type="text/javascript" src="../js/backbone.databinding.min.js"></script>
-<script type="text/javascript" src="../js/mustache.js"></script>
-<script type="text/javascript" src="../js/Utility.js"></script>
-<script type="text/javascript" src="../js/ie9-prototypes.js"></script>
+    <script type="text/javascript" src="../js/jquery-ui.js"></script>
+    <script type="text/javascript" src="../js/json2.js"></script>
+    <script type="text/javascript" src="../js/backbone.databinding.min.js"></script>
+    <script type="text/javascript" src="../js/mustache.js"></script>
+    <script type="text/javascript" src="../js/Utility.js"></script>
+    <script type="text/javascript" src="../js/ie9-prototypes.js"></script>
 
-<script type="text/javascript" src="../js/GlobalMemory.js"></script>
-<script type="text/javascript" src="../js/k_JQAutocomplete.js"></script>
-<script type="text/javascript" src="../js/views/Views.js"></script>
-<script type="text/javascript" src="../js/router/Routers.js"></script>
-<script type="text/javascript" src="../js/models/Models.js"></script>
-<script type="text/javascript" src="../js/bizlogic/AdvancedControlPropertiesBizLogic.js"></script>
-<script type="text/javascript" src="../js/bizlogic/ControlBizLogic.js"></script>
-<script type="text/javascript" src="../js/bizlogic/FormBizLogic.js"></script>
-<script type="text/javascript" src="../js/bizlogic/DesignModeBizLogic.js"></script>
-<script type="text/javascript" src="../js/templates.js"></script>
-<script type="text/javascript" src="../../ngweb/external/de/js/de-field-manager.js"></script>
-<script type="text/javascript" src="../../ngweb/external/de/js/de-form.js"></script>
-<script type="text/javascript" src="../../ngweb/js/de-users.js"></script>
-<script type="text/javascript" src="../../ngweb/js/de-storage-containers.js"></script>
-<script type="text/javascript" src="../../ngweb/js/de-distribution-protocols.js"></script>
-<script type="text/javascript" src="../../ngweb/js/de-sites.js"></script>
-<script type="text/javascript" src="../../ngweb/js/wrapper.js" ></script>
-<link rel="STYLESHEET" type="text/css" href="../../dhtmlxSuite_v35/dhtmlxTabbar/codebase/dhtmlxtabbar.css">
-<link rel="STYLESHEET" type="text/css" href="../../dhtmlxSuite_v35/dhtmlxTree/codebase/dhtmlxtree.css">
-<script
-	src="../../dhtmlxSuite_v35/dhtmlxTabbar/codebase/dhtmlxcommon.js"></script>
-<script
-	src="../../dhtmlxSuite_v35/dhtmlxTabbar/codebase/dhtmlxtabbar.js"></script>
-<script src="../../dhtmlxSuite_v35/dhtmlxTree/codebase/dhtmlxtree.js"></script>
-<link rel="STYLESHEET" type="text/css"
-	href="../../dhtmlxSuite_v35/dhtmlxGrid/codebase/dhtmlxgrid.css" />
-<link rel="stylesheet" type="text/css"
-	href="../css/dhtmlxgrid_kspl_csdDesignMode.css" />
-<link rel="stylesheet" type="text/css"
-	href="../css/dhtmlx_drag_kspl_csdDesignMode.css" />
-<link rel="STYLESHEET" type="text/css"
-	href="../../dhtmlxSuite_v35/dhtmlxGrid/codebase/skins/dhtmlxgrid_dhx_skyblue.css" />
+    <script type="text/javascript" src="../js/GlobalMemory.js"></script>
+    <script type="text/javascript" src="../js/k_JQAutocomplete.js"></script>
+    <script type="text/javascript" src="../js/views/Views.js"></script>
+    <script type="text/javascript" src="../js/router/Routers.js"></script>
+    <script type="text/javascript" src="../js/models/Models.js"></script>
+    <script type="text/javascript" src="../js/bizlogic/AdvancedControlPropertiesBizLogic.js"></script>
+    <script type="text/javascript" src="../js/bizlogic/ControlBizLogic.js"></script>
+    <script type="text/javascript" src="../js/bizlogic/FormBizLogic.js"></script>
+    <script type="text/javascript" src="../js/bizlogic/DesignModeBizLogic.js"></script>
+    <script type="text/javascript" src="../js/templates.js"></script>
+    <script type="text/javascript" src="../../ngweb/external/de/js/de-field-manager.js"></script>
+    <script type="text/javascript" src="../../ngweb/external/de/js/de-form.js"></script>
+    <script type="text/javascript" src="../../ngweb/js/de-users.js"></script>
+    <script type="text/javascript" src="../../ngweb/js/de-storage-containers.js"></script>
+    <script type="text/javascript" src="../../ngweb/js/de-specimen-position.js"></script>
+    <script type="text/javascript" src="../../ngweb/js/wrapper.js" ></script>
+    <script type="text/javascript" src="../dhtmlxSuite_v35/dhtmlxTabbar/codebase/dhtmlxcommon.js"></script>
+    <script type="text/javascript" src="../dhtmlxSuite_v35/dhtmlxTabbar/codebase/dhtmlxtabbar.js"></script>
+    <script type="text/javascript" src="../dhtmlxSuite_v35/dhtmlxTree/codebase/dhtmlxtree.js"></script>
 
-<script type="text/javascript"
-	src="../../dhtmlxSuite_v35/dhtmlxGrid/codebase/dhtmlxgrid.js"></script>
-<script type="text/javascript"
-	src="../../dhtmlxSuite_v35/dhtmlxGrid/codebase/dhtmlxgridcell.js"></script>
-<script type="text/javascript"
-	src="../../dhtmlxSuite_v35/dhtmlxGrid/codebase/ext/dhtmlxgrid_mcol.js"></script>
-<script type="text/javascript"
-	src="../js/dhtmlxgridCustomCellDrag.js"></script>
+    <script type="text/javascript" src="../dhtmlxSuite_v35/dhtmlxGrid/codebase/dhtmlxgrid.js"></script>
+    <script type="text/javascript" src="../dhtmlxSuite_v35/dhtmlxGrid/codebase/dhtmlxgridcell.js"></script>
+    <script type="text/javascript" src="../dhtmlxSuite_v35/dhtmlxGrid/codebase/ext/dhtmlxgrid_mcol.js"></script>
+    <script type="text/javascript" src="../js/dhtmlxgridCustomCellDrag.js"></script>
+    <script type="text/javascript" src="../dhtmlxSuite_v35/dhtmlxGrid/codebase/ext/dhtmlxgrid_pgn.js"></script> 
+    <script type="text/javascript" src="../K_Widgets/k_tabbar/dhtmlx_tabbar_impl.js"></script>
+    <script type="text/javascript" src="../K_Widgets/k_tabbar/k_tabbar.js"></script>
+    <script type="text/javascript" src="../js/jquery.tinycarousel.min.js"></script>
+    <script type="text/javascript" src="../js/jquery.form.min.js"></script>
 
-<script  src="../../dhtmlxSuite_v35/dhtmlxGrid/codebase/ext/dhtmlxgrid_pgn.js"></script> 
+    <script id="designModeView" type="text/template">
+      <div style = 'padding: 5px;'>
+        <input type="button" id="addRow" value="Add Row" class = "button"/>
+        <input type="button" id="addColumn" value="Add Column" class = "button"/>
+      </div>
+      <div id="layoutGrid" style="width:900px; height:485px;"></div>
+    </script>
+  </head>
 
-<link rel="STYLESHEET" type="text/css" href="../../dhtmlxSuite_v35/dhtmlxGrid/codebase/ext/dhtmlxgrid_pgn_bricks.css">
-   
-<script type="text/javascript"
-	src="../K_Widgets/k_tabbar/dhtmlx_tabbar_impl.js"></script>
-<script type="text/javascript"
-	src="../K_Widgets/k_tabbar/k_tabbar.js"></script>
-<script type="text/javascript"
-	src="../js/jquery.tinycarousel.min.js"></script>
-
-<link rel="stylesheet" href="../css/carousel.css" type="text/css"
-	media="screen" />
-
-<script type="text/javascript"
-	src="../js/jquery.form.min.js"></script>
-
-<script id="designModeView" type="text/template">
-
-		<div style = 'padding: 5px;'>
-		<input type="button" id="addRow" value="Add Row" class = "button"/>
-		<input type="button" id="addColumn" value="Add Column" class = "button"/>
-		</div>
-		<div id="layoutGrid" style="width:900px;height:485px;" ></div>
-</script>
-<title>CSD</title>
-</head>
-<body>
-<div id = "csd_body"></div>
-	<script type="text/javascript" src="../js/Main.js"></script>
-</body>
+  <body>
+    <div id = "csd_body"></div>
+    <script type="text/javascript" src="../js/Main.js"></script>
+  </body>
 
 </html>

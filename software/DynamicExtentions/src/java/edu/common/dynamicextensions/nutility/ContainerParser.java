@@ -3,6 +3,8 @@ package edu.common.dynamicextensions.nutility;
 import static edu.common.dynamicextensions.nutility.ParserUtil.getLongValue;
 import static edu.common.dynamicextensions.nutility.ParserUtil.getTextValue;
 
+import java.io.FileInputStream;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -34,6 +36,8 @@ public class ContainerParser {
 	private final String formXml;
 	
 	private Properties props = new Properties();
+	
+	private InputStream formXmlIn;
 
 	public ContainerParser(String pvDir) {
 		this(null, pvDir);
@@ -43,15 +47,36 @@ public class ContainerParser {
 		this.formXml = formXml;
 		props.setProperty("pvDir", pvDir);		
 	}
+	
+	public ContainerParser(InputStream in) {
+		this.formXmlIn = in;
+		this.formXml = null;
+		props.setProperty("pvDir", "");
+	}
 		
 	public Container parse() throws Exception {
-		if (formXml == null || formXml.trim().isEmpty()) {
+		if ((formXml == null || formXml.trim().isEmpty()) && formXmlIn == null) {
 			throw new IllegalAccessError("Cannot call this method without form definition file");
 		}
-		
+				
+		InputStream formIn = null;
+		try {
+			if (formXml != null) {
+				formIn = new FileInputStream(formXml);
+			} else {
+				formIn = formXmlIn; 
+			}
+			
+			return parse(formIn);
+		} finally {
+			IoUtil.close(formIn);
+		}
+	}
+	
+	public Container parse(InputStream formIn) throws Exception {		
 		DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
 		DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
-		Document doc = docBuilder.parse(formXml);
+		Document doc = docBuilder.parse(formIn);
 		doc.getDocumentElement().normalize();
 
 		NodeList nodes = doc.getElementsByTagName("view");

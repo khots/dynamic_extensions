@@ -7,9 +7,6 @@ import static edu.common.dynamicextensions.nutility.XmlUtil.writeElement;
 import static edu.common.dynamicextensions.nutility.XmlUtil.writeElementEnd;
 import static edu.common.dynamicextensions.nutility.XmlUtil.writeElementStart;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.io.Serializable;
 import java.io.Writer;
 import java.math.BigDecimal;
@@ -23,11 +20,9 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
-import au.com.bytecode.opencsv.CSVWriter;
 import edu.common.dynamicextensions.napi.ControlValue;
 import edu.common.dynamicextensions.ndao.ColumnTypeHelper;
 import edu.common.dynamicextensions.nutility.ContainerXmlSerializer;
-import edu.common.dynamicextensions.nutility.IoUtil;
 
 public abstract class SelectControl extends Control implements Serializable {
 	private static final long serialVersionUID = 7354155108839121342L;
@@ -91,7 +86,7 @@ public abstract class SelectControl extends Control implements Serializable {
 			try {
 				result = new SimpleDateFormat(pvDataSource.getDateFormat()).parse(value);
 			} catch (Exception e) {
-				throw new RuntimeException("Error parsing date string: " + value, e);
+				throw new IllegalArgumentException("Error parsing date string: " + value, e);
 			}			
 		}
 		
@@ -257,5 +252,62 @@ public abstract class SelectControl extends Control implements Serializable {
 		}
 
 		writeElementEnd(writer, "options");		
+	}	
+	
+	public boolean isValidPv(String input) {
+		if (input == null || input.trim().isEmpty()) {
+			return true;
+		}
+		
+		List<PermissibleValue> pvs = getPvs();
+		if (pvs == null || pvs.isEmpty()) {
+			return false; 
+		}
+		
+		boolean found = false;
+		for (PermissibleValue pv : pvs) {
+			if (pv.getValue().equals(input)) {
+				found = true;
+				break;
+			}
+		}
+		
+		return found;
 	}
+	
+	public ValidationStatus validateSingle(Object value) {
+		boolean empty = (value == null || value.toString().trim().isEmpty());
+		if (isMandatory() && empty) {
+			return ValidationStatus.NULL_OR_EMPTY;
+		}
+		
+		if (empty) {
+			return ValidationStatus.OK;
+		}
+		
+		return isValidPv(value.toString()) ? ValidationStatus.OK : ValidationStatus.INVALID_VALUE;
+	}
+
+	public ValidationStatus validateMultiple(Object value) {
+		if (isMandatory() && value == null) {
+			return ValidationStatus.NULL_OR_EMPTY;
+		}
+		
+		if (value == null) {
+			return ValidationStatus.OK;
+		}
+		
+		String[] values = (String[])value;
+		if (isMandatory() && values.length == 0) {
+			return ValidationStatus.NULL_OR_EMPTY;
+		}
+		
+		for (String val : values) {
+			if (!isValidPv(val)) {
+				return ValidationStatus.INVALID_VALUE;
+			}
+		}
+		
+		return ValidationStatus.OK;
+	}	
 }

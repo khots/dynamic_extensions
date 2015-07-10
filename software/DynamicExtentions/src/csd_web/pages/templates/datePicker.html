@@ -1,4 +1,25 @@
 <div class = "controlHeaders"><label class = 'text_bold'>General Properties</label></div>
+
+<div id="field-placement" class="propertiesContainer">
+  <div style="width: 24%; text-align: right;" class="propertiesContainerCell">
+    <label class = 'text_normal'>Field Placement</label>
+  </div>
+  <div class="propertiesContainerCell drop-down">
+    <select name="placement-position" class="textDropDown">
+      <option value="">Select Position</option>
+      <option value="LAST_ROW">Last Row</option>
+      <option value="ROW_BEFORE">Row Before</option>
+      <option value="ROW_AFTER">Row After</option>
+      <option value="SAME_ROW">Same Row</option>
+    </select>
+  </div>
+  <div class="propertiesContainerCell drop-down">
+    <select name="placement-control" class="textDropDown">
+      <option value="">Select Control</option>
+    </select>
+  </div>
+</div>
+
 	<div class = "propertiesContainer">
 		<div st8yle = 'width: 24%;' class = "propertiesContainerCell" align = right>
 			<label class = 'text_normal'>Field Name</label>
@@ -25,8 +46,6 @@
 			<select id = "format" class = 'textDropDown'>
 				  <option value="DATE">Date Only</option>
 				  <option value="DATE AND TIME">Date and Time</option>
-				  <option value="MONTH AND YEAR">Month and Year</option>
-				  <option value="YEAR ONLY">Year Only</option>
 			</select>
 		</div>	
 	</div>

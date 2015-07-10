@@ -59,6 +59,7 @@ public class RadioButton extends SelectControl implements Serializable {
 	public void getProps(Map<String, Object> props) {
 		super.getProps(props);
 		props.put("type", "radiobutton");
+		props.put("optionsPerRow", getOptionsPerRow());
 	}
 	
 	@Override
@@ -68,4 +69,9 @@ public class RadioButton extends SelectControl implements Serializable {
 		writeElement(writer, "optionsPerRow", getOptionsPerRow());			
 		writeElementEnd(writer, "radioButton");		
 	}
+	
+	@Override
+	public ValidationStatus validate(Object value) {
+		return validateSingle(value);
+	}	
 }

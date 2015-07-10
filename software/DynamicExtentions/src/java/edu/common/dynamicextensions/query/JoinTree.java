@@ -102,6 +102,10 @@ public class JoinTree
     public void setField(Control field) {
         this.field = field;
     }
+    
+    public boolean isMultiSelect() {
+    	return field != null;
+    }
 
     public JoinTree getParent() {
         return parent;

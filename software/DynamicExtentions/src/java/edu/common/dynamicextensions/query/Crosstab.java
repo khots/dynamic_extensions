@@ -34,6 +34,8 @@ public class Crosstab implements ResultPostProc {
 	
 	private Set<String> measureCols = new LinkedHashSet<String>();
 	
+	private Set<String> rollupExcludeCols = new LinkedHashSet<String>();
+
 	private boolean numericMeasure;
 			
 	public Crosstab(QueryExpressionNode queryExpr) {
@@ -46,13 +48,18 @@ public class Crosstab implements ResultPostProc {
 			ExpressionNode column = queryExpr
 					.getSelectList()
 					.getElements()
-					.get(valIdx - 1);
+					.get(Math.abs(valIdx) - 1);
 			
 			if (column.getType() != DataType.INTEGER && column.getType() != DataType.FLOAT) {
 				numericMeasure = false;				
 			}
 			
-			measureCols.add(getMeasureColumnLabel(column));
+			String measureCol = getMeasureColumnLabel(column);
+			measureCols.add(measureCol);
+
+			if (valIdx < 0) {
+				rollupExcludeCols.add(measureCol);
+			}
 		}
 		
 		if (ctSpec.isIncludeSubTotals() && !numericMeasure) {
@@ -122,6 +129,10 @@ public class Crosstab implements ResultPostProc {
 		
 		for (Row row : rows.values()) {
 			for (String measureCol : measureCols) {
+				if (row.calculatedRow && rollupExcludeCols.contains(measureCol)) {
+					continue;
+				}
+
 				List<Object> values = new ArrayList<Object>(row.getRowKeyValues());
 				BigDecimal sum = BigDecimal.ZERO;
 				
@@ -134,14 +145,14 @@ public class Crosstab implements ResultPostProc {
 					Object measure = measureMap.get(measureCol);
 					values.add(measure);
 					
-					if (numericMeasure) {
+					if (numericMeasure && measure != null) {
 						sum = sum.add(new BigDecimal(measure.toString()));
 					}
 				}
 				
 				if (numericMeasure) {
-					values.add(sum);
-				}
+					values.add(rollupExcludeCols.contains(measureCol) ? null : sum);
+				} 
 				
 				result.add(values.toArray(new Object[0]));								
 			}
@@ -172,6 +183,7 @@ public class Crosstab implements ResultPostProc {
 		
 		Map<String, Object> measureMap = new LinkedHashMap<String, Object>();
 		for (int idx : ctSpec.getMeasureColumns()) {
+			idx = Math.abs(idx);
 			ExpressionNode node = queryExpr.getSelectList().getElements().get(idx - 1);
 			String label = getMeasureColumnLabel(node);
 			measureMap.put(label, rs.getObject(idx));
@@ -192,7 +204,7 @@ public class Crosstab implements ResultPostProc {
 				rows.put(key, row);
 			}
 			
-			row.addColValue(colKeyVal, measureMap);					
+			row.addColValue(colKeyVal, measureMap);
 		}
 		
 		dynamicCols.add(colKeyVal);
@@ -215,9 +227,19 @@ public class Crosstab implements ResultPostProc {
 		
 		private Map<Object, Map<String, Object>> colKeyValueMap = new TreeMap<Object, Map<String, Object>>();
 		
+		private boolean calculatedRow;
+
 		public Row(String key, List<Object> rowKeyValues) {
 			this.key = key;
 			this.rowKeyValues = rowKeyValues;
+			this.calculatedRow = false;
+
+			for (Object rowKey : rowKeyValues) {
+				if (rowKey != null && rowKey.equals(NULL_STR_MARKER)) {
+					this.calculatedRow = true;
+					break;
+				}
+			}
 		}
 
 		public List<Object> getRowKeyValues() {
@@ -227,12 +249,23 @@ public class Crosstab implements ResultPostProc {
 		public void addColValue(Object columnKey, Map<String, Object> measureMap) {
 			Map<String, Object> existingMeasures = colKeyValueMap.get(columnKey);
 			if (existingMeasures == null || !numericMeasure) {
-				colKeyValueMap.put(columnKey, new LinkedHashMap<String, Object>(measureMap));
+				Map<String, Object> columnValueMap = new LinkedHashMap<String, Object>(measureMap);				
+				if (calculatedRow) {
+					for (String excludeMeasureCol : rollupExcludeCols) {
+						columnValueMap.remove(excludeMeasureCol);
+					}
+				}
+
+				colKeyValueMap.put(columnKey, columnValueMap);
 			} else {
 				for (Map.Entry<String, Object> measure : measureMap.entrySet()) {
+					if (rollupExcludeCols.contains(measure.getKey())) {
+						continue;
+					}
+
 					BigDecimal existingMeasure = getBigDecimal(existingMeasures.get(measure.getKey()));
 					BigDecimal val = getBigDecimal(measure.getValue());
-					existingMeasures.put(measure.getKey(), existingMeasure.add(val));					
+					existingMeasures.put(measure.getKey(), existingMeasure.add(val));
 				}
 			}
 		}

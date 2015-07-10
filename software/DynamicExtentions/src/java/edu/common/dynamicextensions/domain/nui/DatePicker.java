@@ -7,16 +7,13 @@ import static edu.common.dynamicextensions.nutility.XmlUtil.writeElementStart;
 
 import java.io.Serializable;
 import java.io.Writer;
-import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-import org.apache.commons.beanutils.MethodUtils;
 import org.apache.commons.lang.StringUtils;
 
 import edu.common.dynamicextensions.ndao.ColumnTypeHelper;
@@ -100,7 +97,7 @@ public class DatePicker extends Control implements Serializable {
 				fmt = DEFAULT_DATE_FORMAT;
 			}
 			
-			if (format.contains("HH:mm")) {
+			if (format.contains("HH:mm") || format.contains("hh:mm")) {
 				String timeFormat = DEApp.getTimeFormat() == null ? DEFAULT_TIME_FORMAT : DEApp.getTimeFormat(); 
 				fmt = fmt.concat(" "+ timeFormat);
 			}
@@ -109,7 +106,7 @@ public class DatePicker extends Control implements Serializable {
 			simpleDateFormat.setLenient(false);
 			return simpleDateFormat.parse(value);
 		} catch (Exception e) {
-			throw new RuntimeException("Error creating date object from [" + value + "]. Format: " + format, e);
+			throw new IllegalArgumentException("Error creating date object from [" + value + "]. Format: " + format, e);
 		}
 	}
 	
@@ -217,6 +214,25 @@ public class DatePicker extends Control implements Serializable {
 			}
 		} catch (Exception e) {
 			throw new RuntimeException("Error converting input object: " + value.getClass().getName() + " to java.util.Date", e);
+		}
+	}
+
+	@Override
+	public ValidationStatus validate(Object value) {
+		boolean empty = (value == null || value.toString().isEmpty());
+		if (isMandatory() && empty) {
+			return ValidationStatus.NULL_OR_EMPTY;
+		}
+		
+		if (empty) {
+			return ValidationStatus.OK;
+		}
+		
+		try {
+			fromString(value.toString());
+			return ValidationStatus.OK;
+		} catch (Exception e) {
+			return ValidationStatus.INVALID_VALUE;
 		}
 	}
 }

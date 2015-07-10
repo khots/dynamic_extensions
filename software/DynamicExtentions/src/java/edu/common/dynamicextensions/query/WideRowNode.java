@@ -50,7 +50,7 @@ public class WideRowNode implements Serializable {
     
     public List<List<ResultColumn>> flatten(
     		Map<String, Integer> maxRowCntMap, 
-    		Map<String, Boolean> tabFormTypeMap, 
+    		Map<String, WideRowMode> tabWideRowMode, 
     		Map<String, List<ExpressionNode>> tabFieldsMap) {
     	
     	List<ResultColumn> currentRow = new ArrayList<ResultColumn>();
@@ -65,12 +65,13 @@ public class WideRowNode implements Serializable {
     	for (Map.Entry<String, Map<String, WideRowNode>> childTabRows : childrenRowsMap.entrySet()) {
     		List<List<ResultColumn>> currentRows = new ArrayList<List<ResultColumn>>();
     		
-    		if (tabFormTypeMap.get(childTabRows.getKey())) {
+    		WideRowMode mode = tabWideRowMode.get(childTabRows.getKey());
+    		if (mode == WideRowMode.SHALLOW) {
     			for (List<ResultColumn> existingRow : rows) {
     				int childRowPos = -1, insertIdx = -1;
     				
         			for (Map.Entry<String, WideRowNode> childRow : childTabRows.getValue().entrySet()) {
-        				List<List<ResultColumn>> flattenedChildRows = childRow.getValue().flatten(maxRowCntMap, tabFormTypeMap, tabFieldsMap);        				        				
+        				List<List<ResultColumn>> flattenedChildRows = childRow.getValue().flatten(maxRowCntMap, tabWideRowMode, tabFieldsMap);        				        				
         				for (List<ResultColumn> flattenedChildRow : flattenedChildRows) {
         					if (childRowPos == -1) {
         						childRowPos = getFirstElementPos(flattenedChildRow);
@@ -95,7 +96,7 @@ public class WideRowNode implements Serializable {
             		addEmptyChildRow(row, tabFields);
             		currentRows.add(row);
     			}
-    		} else { // sub-form or multi-valued and deep
+    		} else if (mode == WideRowMode.DEEP) { 
     			for (List<ResultColumn> existingRow : rows) {
         			List<ResultColumn> row = new ArrayList<ResultColumn>(existingRow);
         			WideRowNode childNode = null;
@@ -104,7 +105,7 @@ public class WideRowNode implements Serializable {
         			
         			for (Map.Entry<String, WideRowNode> childRow : childTabRows.getValue().entrySet()) {
         				childNode = childRow.getValue();
-        				List<List<ResultColumn>> flattenedChildRows = childNode.flatten(maxRowCntMap, tabFormTypeMap, tabFieldsMap);
+        				List<List<ResultColumn>> flattenedChildRows = childNode.flatten(maxRowCntMap, tabWideRowMode, tabFieldsMap);
         				        				
         				for (List<ResultColumn> flattenedChildRow : flattenedChildRows) {
         					if (childRowPos == -1) {

@@ -82,13 +82,6 @@ public interface AQLVisitor<T> extends ParseTreeVisitor<T> {
 	T visitDate_interval(@NotNull AQLParser.Date_intervalContext ctx);
 
 	/**
-	 * Visit a parse tree produced by {@link AQLParser#NthChildFilterExpr}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitNthChildFilterExpr(@NotNull AQLParser.NthChildFilterExprContext ctx);
-
-	/**
 	 * Visit a parse tree produced by {@link AQLParser#MonthsDiffFunc}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -96,11 +89,25 @@ public interface AQLVisitor<T> extends ParseTreeVisitor<T> {
 	T visitMonthsDiffFunc(@NotNull AQLParser.MonthsDiffFuncContext ctx);
 
 	/**
+	 * Visit a parse tree produced by {@link AQLParser#NthChildFilterExpr}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitNthChildFilterExpr(@NotNull AQLParser.NthChildFilterExprContext ctx);
+
+	/**
 	 * Visit a parse tree produced by {@link AQLParser#CrossTabExpr}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
 	T visitCrossTabExpr(@NotNull AQLParser.CrossTabExprContext ctx);
+
+	/**
+	 * Visit a parse tree produced by {@link AQLParser#ReportExpr}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitReportExpr(@NotNull AQLParser.ReportExprContext ctx);
 
 	/**
 	 * Visit a parse tree produced by {@link AQLParser#BoolLiteral}.

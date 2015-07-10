@@ -147,19 +147,6 @@ public class AQLBaseListener implements AQLListener {
 	 * <p/>
 	 * The default implementation does nothing.
 	 */
-	@Override public void enterNthChildFilterExpr(@NotNull AQLParser.NthChildFilterExprContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 * <p/>
-	 * The default implementation does nothing.
-	 */
-	@Override public void exitNthChildFilterExpr(@NotNull AQLParser.NthChildFilterExprContext ctx) { }
-
-	/**
-	 * {@inheritDoc}
-	 * <p/>
-	 * The default implementation does nothing.
-	 */
 	@Override public void enterMonthsDiffFunc(@NotNull AQLParser.MonthsDiffFuncContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -173,6 +160,19 @@ public class AQLBaseListener implements AQLListener {
 	 * <p/>
 	 * The default implementation does nothing.
 	 */
+	@Override public void enterNthChildFilterExpr(@NotNull AQLParser.NthChildFilterExprContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 * <p/>
+	 * The default implementation does nothing.
+	 */
+	@Override public void exitNthChildFilterExpr(@NotNull AQLParser.NthChildFilterExprContext ctx) { }
+
+	/**
+	 * {@inheritDoc}
+	 * <p/>
+	 * The default implementation does nothing.
+	 */
 	@Override public void enterCrossTabExpr(@NotNull AQLParser.CrossTabExprContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -180,6 +180,19 @@ public class AQLBaseListener implements AQLListener {
 	 * The default implementation does nothing.
 	 */
 	@Override public void exitCrossTabExpr(@NotNull AQLParser.CrossTabExprContext ctx) { }
+
+	/**
+	 * {@inheritDoc}
+	 * <p/>
+	 * The default implementation does nothing.
+	 */
+	@Override public void enterReportExpr(@NotNull AQLParser.ReportExprContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 * <p/>
+	 * The default implementation does nothing.
+	 */
+	@Override public void exitReportExpr(@NotNull AQLParser.ReportExprContext ctx) { }
 
 	/**
 	 * {@inheritDoc}

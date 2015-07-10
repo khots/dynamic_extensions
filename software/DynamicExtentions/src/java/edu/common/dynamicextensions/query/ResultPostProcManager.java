@@ -13,7 +13,8 @@ public class ResultPostProcManager {
 	}
 	
 	private ResultPostProcManager() {
-		addFactory("crosstab", CrosstabFactory.getInstance());		
+		addFactory("crosstab", CrosstabFactory.getInstance());
+		addFactory("columnsummary", ColumnSummaryPostProcFactory.getInstance());
 	}
 
 	public Map<String, ResultPostProcFactory> getFactoryMap() {

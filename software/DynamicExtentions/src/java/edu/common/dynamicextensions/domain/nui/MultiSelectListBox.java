@@ -105,4 +105,9 @@ public class MultiSelectListBox extends ListBox implements MultiSelectControl, S
 		super.getProps(props);
 		props.put("type", "multiSelectListbox");
 	}
+	
+	@Override
+	public ValidationStatus validate(Object value) {
+		return validateMultiple(value);
+	}		
 }

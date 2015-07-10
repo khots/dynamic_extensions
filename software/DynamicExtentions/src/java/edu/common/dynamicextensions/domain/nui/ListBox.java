@@ -96,4 +96,9 @@ public class ListBox extends SelectControl implements Serializable {
 		
 		writeElementEnd(writer, "listBox");		
 	}
+	
+	@Override
+	public ValidationStatus validate(Object value) {
+		return validateSingle(value);
+	}	
 }

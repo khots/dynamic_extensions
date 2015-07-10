@@ -16,7 +16,7 @@ import edu.common.dynamicextensions.query.ast.FieldNode;
 import edu.common.dynamicextensions.query.ast.QueryExpressionNode;
 import edu.common.dynamicextensions.query.cachestore.LinkedEhCacheMap;
 
-public class ShallowWideRowGenerator {    
+public class ShallowWideRowGenerator {
     private LinkedEhCacheMap<String, WideRowNode> wideRows = new LinkedEhCacheMap<String, WideRowNode>();
     
     private Map<String, String[]> tabJoinPath = new HashMap<String, String[]>();
@@ -25,8 +25,7 @@ public class ShallowWideRowGenerator {
        
     private Map<String, List<ExpressionNode>> tabFieldsMap = new HashMap<String, List<ExpressionNode>>();
    
-    // false if form is either subform or multiselect. true otherwise
-    private Map<String, Boolean> tabFormTypeMap = new HashMap<String, Boolean>(); 
+    private Map<String, WideRowMode> tabWideRowMode = new HashMap<String, WideRowMode>();
     
     private String rootTabAlias = null;
     
@@ -36,13 +35,22 @@ public class ShallowWideRowGenerator {
     
     private JoinTree queryJoinTree;
     
+    private WideRowMode mode;
+        
     public ShallowWideRowGenerator(JoinTree queryJoinTree, QueryExpressionNode queryExpr) {
+    	this(queryJoinTree, queryExpr, WideRowMode.DEEP);
+    }
+    
+    public ShallowWideRowGenerator(JoinTree queryJoinTree, QueryExpressionNode queryExpr, WideRowMode mode) {
         this.queryExpr = queryExpr;
         this.queryJoinTree = queryJoinTree;
         this.rootTabAlias = queryJoinTree.getAlias();
-        initTableJoinPath(queryJoinTree);
+        this.mode = mode;
+        initTableJoinPath(queryJoinTree);    	
     }
     
+    
+        
     public void start() {
         wideRows.clear();
         aliasRowCountMap.clear();
@@ -90,16 +98,11 @@ public class ShallowWideRowGenerator {
                         	id = tabAliasIdMap.get(joinNodes[j]);
                         }
                         
-//                    	if (id == null) {
-//                    		break;
-//                    	}                        
-                                                
                         WideRowNode childRow = childTabRows.get(id);
                         if (childRow == null) {
                             childRow = new WideRowNode(joinNodes[j], id);
                             childRow.setColumns(tabAliasColValuesMap.get(joinNodes[j]));
-                            childTabRows.put(id, childRow);
-                           	//incrTabRowCnt(joinNodes[j]);                            
+                            childTabRows.put(id, childRow);                            
                         }
                         
                         wideRow = childRow;
@@ -130,7 +133,7 @@ public class ShallowWideRowGenerator {
     	
     	Iterator<WideRowNode> iter = wideRows.iterator();
     	if (iter != null && iter.hasNext()) {
-    		List<List<ResultColumn>> resultCols = iter.next().flatten(aliasRowCountMap, tabFormTypeMap, tabFieldsMap);
+    		List<List<ResultColumn>> resultCols = iter.next().flatten(aliasRowCountMap, tabWideRowMode, tabFieldsMap);
     		columns = resultCols.iterator().next();
     	} else {
     		columns = getTabColumns(aliasRowCountMap, tabFieldsMap);
@@ -191,7 +194,7 @@ public class ShallowWideRowGenerator {
     private List<Object[]> flattenedRows(WideRowNode wideRow) {
     	List<Object[]> result = new ArrayList<Object[]>();
     	
-        List<List<ResultColumn>> rows = wideRow.flatten(aliasRowCountMap, tabFormTypeMap, tabFieldsMap);        
+        List<List<ResultColumn>> rows = wideRow.flatten(aliasRowCountMap, tabWideRowMode, tabFieldsMap);        
         for (List<ResultColumn> row : rows) {            
             Object[] values = new Object[row.size()];
             int i = 0;
@@ -234,7 +237,15 @@ public class ShallowWideRowGenerator {
         path.add(tabAlias);
         
         tabJoinPath.put(tabAlias, path.toArray(new String[0]));
-        tabFormTypeMap.put(tabAlias, !(joinTree.isSubFormOrMultiSelect() || joinTree.isExtensionForm()));
+        
+        if (joinTree.isMultiSelect()) {
+        	tabWideRowMode.put(tabAlias, WideRowMode.DEEP);
+        } else if (mode == WideRowMode.DEEP && (joinTree.isSubForm() || joinTree.isExtensionForm())) {
+        	tabWideRowMode.put(tabAlias, WideRowMode.DEEP);
+        } else {
+        	tabWideRowMode.put(tabAlias, WideRowMode.SHALLOW);
+        }
+        
         for (JoinTree childTree : joinTree.getChildren()) {
             initTableJoinPath(childTree, path);
         }
@@ -332,10 +343,16 @@ public class ShallowWideRowGenerator {
         for (Map.Entry<String, List<ExpressionNode>> tabFields : tabFieldsMap.entrySet()) {
         	String alias = tabFields.getKey();
         	Integer count = null;
-        	if (tabFormTypeMap.get(alias)) {
-        		count = 1;
-        	} else {
-        		count = maxCount.get(alias);
+        	
+        	switch (tabWideRowMode.get(alias)) {
+        		case DEEP:
+        			count = maxCount.get(alias);
+        			break;
+        			
+        		case SHALLOW:
+        		case OFF:
+        			count = 1;
+        			break;
         	}
         	
         	if (count == null || count == 0) {

@@ -1,5 +1,6 @@
 package edu.common.dynamicextensions.domain.nui;
 
+import java.io.InputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -66,6 +67,8 @@ public class Container implements Serializable {
 	private int sequenceNo;
 
 	private long ctrlId;
+	
+	private boolean managedTables = false;
 	
 	private Map<String, Control> controlsMap = new LinkedHashMap<String, Control>();
 	
@@ -552,8 +555,8 @@ public class Container implements Serializable {
 			// the control type got changed -> remove old + add new
 			//
 			control.setId(++ctrlId);
-			if (!(control instanceof MultiSelectControl)) {						// For MSCtrls Column name is "VALUE"
-				control.setDbColumnName(String.format(columnNameFmt, ctrlId)); 	// Set DB name here
+			if (!(control instanceof MultiSelectControl) && !isManagedTables()) {	// For MSCtrls Column name is "VALUE"
+				control.setDbColumnName(String.format(columnNameFmt, ctrlId)); 	    // Set DB name here
 			}
 			
 			add(delLog, existingControl);			
@@ -565,17 +568,33 @@ public class Container implements Serializable {
 			if (existingControl instanceof MultiSelectControl) {
 				MultiSelectControl existingMsCtrl = (MultiSelectControl)existingControl;
 				MultiSelectControl newMsCtrl = (MultiSelectControl)control;
-				newMsCtrl.setTableName(existingMsCtrl.getTableName());
+				if (!isManagedTables()) {
+					// 
+					// We do not allow to change table name in case of non-managed forms/tables
+					//
+					newMsCtrl.setTableName(existingMsCtrl.getTableName());
+				}				
 			} else if (existingControl instanceof SubFormControl) {
 				SubFormControl existingSfCtrl = (SubFormControl)existingControl;
-				SubFormControl newSfCtrl = (SubFormControl)control;				
-				newSfCtrl.setTableName(existingSfCtrl.getTableName());
-								
+				SubFormControl newSfCtrl = (SubFormControl)control;
+				
+				existingSfCtrl.setForeignKey(newSfCtrl.getForeignKey());
+				existingSfCtrl.setParentKey(newSfCtrl.getParentKey());
+				existingSfCtrl.setPathLink(newSfCtrl.isPathLink());
+				
+				if (!isManagedTables()) {
+					newSfCtrl.setTableName(existingSfCtrl.getTableName());
+				}
+												
 				if (bulkEdit) {
 					Container newSfContainer = newSfCtrl.getSubContainer();
 					Container existingSfContainer = existingSfCtrl.getSubContainer();
 					newSfContainer.setId(existingSfContainer.getId());
-					newSfContainer.setDbTableName(existingSfContainer.getDbTableName());
+					if (!isManagedTables()) {
+						newSfContainer.setDbTableName(existingSfContainer.getDbTableName());
+					} else {
+						existingSfContainer.setManagedTables(true); // perlocate down to all sub-forms
+					}
 					existingSfContainer.editContainer(newSfContainer);
 					existingSfCtrl.setUserDefinedName(newSfCtrl.getUserDefinedName());
 					control = existingSfCtrl;
@@ -583,7 +602,10 @@ public class Container implements Serializable {
 			}
 			
 			control.setId(existingControl.getId());
-			control.setDbColumnName(existingControl.getDbColumnName());
+			
+			if (!isManagedTables()) {
+				control.setDbColumnName(existingControl.getDbColumnName());
+			}			
 			control.setContainer(this);
 			add(editLog, control);			
 		}	
@@ -633,25 +655,15 @@ public class Container implements Serializable {
 	}
 	
 	public Long save(UserContext userCtxt) {
-		return save(userCtxt, true);
-	}
-	
-	public Long save(UserContext userCtxt, boolean createTables) {
 		JdbcDao jdbcDao = JdbcDaoFactory.getJdbcDao();
-		return save(userCtxt, jdbcDao, createTables);
+		return save(userCtxt, jdbcDao);
 	}
 	
-	public Long save(UserContext userCtxt, JdbcDao jdbcDao) {
-		return save(userCtxt, jdbcDao, true);
-	}
-	
-	public Long save(UserContext userCtxt, JdbcDao jdbcDao, boolean createTables) {		
+	public Long save(UserContext userCtxt, JdbcDao jdbcDao) {		
 		throwExceptionIfDto();
 		
 		try {
-			if (createTables) {
-				executeDDLWithoutTxn(jdbcDao);
-			}
+			executeDDLWithoutTxn(jdbcDao);
 			
 			boolean insert = (id == null);			
 			int numIds = 0;
@@ -767,7 +779,17 @@ public class Container implements Serializable {
 	throws Exception {
 		ContainerParser parser = new ContainerParser(formXml, pvDir);
 		Container parsedContainer = parser.parse();
-
+		return createContainer(ctxt, parsedContainer, createTables);
+	}
+	
+	public static Long createContainer(UserContext ctxt, InputStream in, boolean createTables) 
+	throws Exception {
+		ContainerParser parser = new ContainerParser(in);
+		Container parsedContainer = parser.parse();
+		return createContainer(ctxt, parsedContainer, createTables);
+	}
+				
+	public static Long createContainer(UserContext ctxt, Container parsedContainer, boolean createTables) {
 		Container existingContainer = null;		
 		if (parsedContainer.getId() != null) {
 			existingContainer = getContainer(parsedContainer.getId());
@@ -785,9 +807,10 @@ public class Container implements Serializable {
 			container = existingContainer;
 		} else if (parsedContainer.isDto) {
 			container = fromDto(parsedContainer);
+			container.setManagedTables(!createTables);
 		}
-		
-		return container.save(ctxt, createTables);
+				
+		return container.save(ctxt);
 	}
 				
 	public void editContainer(Container newContainer) {
@@ -795,8 +818,12 @@ public class Container implements Serializable {
 			throw new RuntimeException("Error : Container name cannot be edited");
 		}
 		
-		this.setName(newContainer.getName());
-		this.setCaption(newContainer.getCaption());
+		if (isManagedTables()) {
+			setDbTableName(newContainer.getDbTableName());
+		}
+		
+		setName(newContainer.getName());
+		setCaption(newContainer.getCaption());
 		
 		if (newContainer.getPrimaryKey() != null) {
 			this.setPrimaryKey(newContainer.getPrimaryKey());
@@ -855,16 +882,20 @@ public class Container implements Serializable {
 	
 
 	protected void executeDDL(JdbcDao jdbcDao, String parentTableName) {
+		if (isManagedTables()) {
+			return;
+		}
+		
 		//
 		// 1. Execute DDL referring to addLog, editLog and delLog
 		//
 		List<ColumnDef> columnDefs = new ArrayList<ColumnDef>();
 		for (Control ctrl : addLog) {
-			boolean isMultiValuedControl = ctrl instanceof MultiSelectControl || ctrl instanceof SubFormControl;
-			boolean nonDataColumn = ctrl instanceof Label || ctrl instanceof PageBreak;
-			if (!isMultiValuedControl && !nonDataColumn) {
-				columnDefs.addAll(ctrl.getColumnDefs());
+			if (isNonDataField(ctrl) || isMultiValued(ctrl) || isOneToOneNonInverse(ctrl)) {				
+				continue;
 			}
+			
+			columnDefs.addAll(ctrl.getColumnDefs());
 		}
 
 		if (id == null) {
@@ -1292,6 +1323,18 @@ public class Container implements Serializable {
 		putControls(props);
 		return props;
 	}
+	
+	//
+	// Indicates whether the form's table is managed by DE
+	// or host application
+	//
+	public boolean isManagedTables() {
+		return managedTables;
+	}
+	
+	public void setManagedTables(boolean managedTables) {
+		this.managedTables = managedTables;
+	}
 			
 	private void putControls(Map<String, Object> containerProps) {
 		List<List<Map<String, Object>>> rows = new ArrayList<List<Map<String, Object>>>();
@@ -1305,5 +1348,31 @@ public class Container implements Serializable {
 			
 			rows.add(row);
 		}		
+	}
+	
+	private boolean isMultiValued(Control ctrl) {
+		if (ctrl instanceof MultiSelectControl) {
+			return true;
+		}
+		
+		if (ctrl instanceof SubFormControl) {
+			SubFormControl sfCtrl = (SubFormControl)ctrl;
+			return !sfCtrl.isOneToOne();
+		}
+		
+		return false;
+	}
+	
+	private boolean isOneToOneNonInverse(Control ctrl) {
+		if (!(ctrl instanceof SubFormControl)) {
+			return false;
+		}
+		
+		SubFormControl sfCtrl = (SubFormControl)ctrl;
+		return sfCtrl.isOneToOne() && !sfCtrl.isInverse();
+	}
+	
+	private boolean isNonDataField(Control ctrl) {
+		return ctrl instanceof Label || ctrl instanceof PageBreak;
 	}
 }

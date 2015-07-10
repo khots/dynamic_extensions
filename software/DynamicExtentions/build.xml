@@ -214,11 +214,11 @@
 			</fileset>
 		</copy>
 
-		<copy todir="${temp.dir}/db">
+		<!-- copy todir="${temp.dir}/db">
 			<fileset dir="${base.dir}/db">
 				<include name="**/*" />
 			</fileset>
-		</copy>
+		</copy -->
 
 		<copy todir="${temp.dir}/META-INF">
 			<fileset dir="${base.dir}">
@@ -1352,6 +1352,9 @@
 			<delete file="${interface.dir}/DynamicExtensions.jar" failonerror="false"/>
 			<jar taskname="buildJar" jarfile="${interface.dir}/DynamicExtensions.jar">
 
+				<fileset dir="db/liquibase">
+					<include name="*.xml"/>
+				</fileset>
 				<fileset dir="${target.dir}">
 					<include name="**/*.*" />
 					<include name="**/*.*" />

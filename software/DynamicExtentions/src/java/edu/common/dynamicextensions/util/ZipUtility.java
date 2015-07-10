@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -62,6 +63,31 @@ public final class ZipUtility
 		}
 	}
 
+	public static void extractZipToDestination(InputStream in, String destination)
+	{
+		ZipInputStream zipinputstream = null;
+		try
+		{
+			String destinationPath = "";
+			if (destination != null && !"".equals(destination))
+			{
+				destinationPath = destination + File.separator;
+			}
+			zipinputstream = new ZipInputStream(in);
+			extractZip(zipinputstream, destinationPath);
+			zipinputstream.close();
+		}
+		catch (IOException e)
+		{
+			throw new RuntimeException(
+					"Can not extract the zip, zip may be currupted", e);
+		}
+		finally
+		{
+			IoUtil.close(zipinputstream);
+		}
+	}
+	
 	/**
 	 * This method will extract the zip to which zipinputstream is pointing to destinationPath
 	 * @param zipinputstream pointing to zip

@@ -17,7 +17,6 @@ import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 
-import edu.common.dynamicextensions.napi.ControlValue;
 import edu.common.dynamicextensions.nui.ValidationRuleNames;
 
 public abstract class Control implements Comparable<Control>, Serializable {
@@ -420,10 +419,10 @@ public abstract class Control implements Comparable<Control>, Serializable {
 		return isSkipLogicTargetControl();
 	}
 
-	public List<String> validate(ControlValue controlValue) {
-		return Collections.emptyList();
+	public ValidationStatus validate(Object value) {
+		return ValidationStatus.OK;
 	}
-
+	
 	public Set<String> getAllConceptCodes() {
 		if (conceptCode != null && !conceptCode.isEmpty()) {
 			return Collections.singleton(conceptCode);

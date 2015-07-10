@@ -3,8 +3,6 @@ package edu.common.dynamicextensions.query;
 import java.util.ArrayList;
 import java.util.List;
 
-import edu.common.dynamicextensions.query.ast.*;
-
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.misc.NotNull;
 import org.antlr.v4.runtime.tree.TerminalNode;
@@ -13,10 +11,30 @@ import edu.common.dynamicextensions.domain.nui.DataType;
 import edu.common.dynamicextensions.query.antlr.AQLBaseVisitor;
 import edu.common.dynamicextensions.query.antlr.AQLParser;
 import edu.common.dynamicextensions.query.antlr.AQLParser.LiteralContext;
+import edu.common.dynamicextensions.query.ast.AggregateNode;
 import edu.common.dynamicextensions.query.ast.AggregateNode.AGG_FN;
+import edu.common.dynamicextensions.query.ast.ArithExpressionNode;
 import edu.common.dynamicextensions.query.ast.ArithExpressionNode.ArithOp;
+import edu.common.dynamicextensions.query.ast.BetweenNode;
+import edu.common.dynamicextensions.query.ast.CrosstabNode;
+import edu.common.dynamicextensions.query.ast.CurrentDateNode;
+import edu.common.dynamicextensions.query.ast.DateDiffFuncNode;
 import edu.common.dynamicextensions.query.ast.DateDiffFuncNode.DiffType;
+import edu.common.dynamicextensions.query.ast.DateIntervalNode;
+import edu.common.dynamicextensions.query.ast.ExpressionNode;
+import edu.common.dynamicextensions.query.ast.FieldNode;
+import edu.common.dynamicextensions.query.ast.FilterExpressionNode;
+import edu.common.dynamicextensions.query.ast.FilterNode;
 import edu.common.dynamicextensions.query.ast.FilterNode.RelationalOp;
+import edu.common.dynamicextensions.query.ast.FilterNodeMarker;
+import edu.common.dynamicextensions.query.ast.LimitExprNode;
+import edu.common.dynamicextensions.query.ast.LiteralValueListNode;
+import edu.common.dynamicextensions.query.ast.LiteralValueNode;
+import edu.common.dynamicextensions.query.ast.Node;
+import edu.common.dynamicextensions.query.ast.QueryExpressionNode;
+import edu.common.dynamicextensions.query.ast.ResultPostProcNode;
+import edu.common.dynamicextensions.query.ast.RoundOffNode;
+import edu.common.dynamicextensions.query.ast.SelectListNode;
 
 public class QueryAstBuilder extends AQLBaseVisitor<Node> {
 
@@ -42,8 +60,8 @@ public class QueryAstBuilder extends AQLBaseVisitor<Node> {
     	if (ctx.crosstab_expr() != null) {
     		CrosstabNode crosstabSpec = (CrosstabNode)visit(ctx.crosstab_expr());
     		queryExpr.setCrosstabSpec(crosstabSpec);
-    	} else if (ctx.ID() != null) {
-    		queryExpr.setResultPostProc(ctx.ID().getText());
+    	} else if (ctx.report_expr() != null) {
+    		queryExpr.setResultPostProc((ResultPostProcNode)visit(ctx.report_expr()));
     	}
     	    	    	
     	return queryExpr;
@@ -359,7 +377,23 @@ public class QueryAstBuilder extends AQLBaseVisitor<Node> {
     	}
     	
     	return crosstabSpec; 
-    }    
+    }
+    
+    @Override
+    public ResultPostProcNode visitReportExpr(@NotNull AQLParser.ReportExprContext ctx) {
+    	List<String> args = new ArrayList<String>();
+    	if (ctx.SLITERAL() != null) {
+    		for (TerminalNode tn : ctx.SLITERAL()) {
+    			String text = tn.getText();
+    			args.add(text.substring(1, text.length() - 1).trim()); // remove quotes
+    		}
+    	}
+    	
+    	ResultPostProcNode postProc = new ResultPostProcNode();
+    	postProc.setName(ctx.ID().getText());
+    	postProc.setArgs(args);
+    	return postProc;    	
+    }
     
     private DateDiffFuncNode getDateDiffFuncNode(DiffType diffType, ExpressionNode leftOperand, ExpressionNode rightOperand) {
     	DateDiffFuncNode diff = new DateDiffFuncNode();

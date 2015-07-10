@@ -10,7 +10,7 @@ public class QueryExpressionNode implements Node {
 	
 	private CrosstabNode crosstabSpec;
 	
-	private String resultPostProc;
+	private ResultPostProcNode resultPostProc;
 
 	public SelectListNode getSelectList() {
 		return selectList;
@@ -43,13 +43,23 @@ public class QueryExpressionNode implements Node {
 	public void setCrosstabSpec(CrosstabNode crosstabSpec) {
 		this.crosstabSpec = crosstabSpec;
 	}
-
-	public String getResultPostProc() {
-		return crosstabSpec != null ? crosstabSpec.getName() : resultPostProc;
+	
+	public ResultPostProcNode getResultPostProc() {
+		return resultPostProc;
+	}
+	
+	public void setResultPostProc(ResultPostProcNode resultPostProc) {
+		this.resultPostProc = resultPostProc;
 	}
 
-	public void setResultPostProc(String resultPostProc) {
-		this.resultPostProc = resultPostProc;
+	public String getResultPostProcName() {
+		if (crosstabSpec != null) {
+			return crosstabSpec.getName();
+		} else if (resultPostProc != null) {
+			return resultPostProc.getName();
+		} else {
+			return null;
+		}
 	}
 
 	public boolean isAggregateQuery() {

@@ -4,7 +4,6 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -57,8 +56,8 @@ public class QueryGenerator {
     public QueryGenerator() {
     }
     
-    public QueryGenerator(boolean wideRowSupport, boolean ic, String dateFormat, String timeFormat) {
-    	this.wideRowSupport = wideRowSupport;
+    public QueryGenerator(WideRowMode mode, boolean ic, String dateFormat, String timeFormat) {
+    	this.wideRowSupport = (mode != WideRowMode.OFF);
     	this.ic = ic;
         this.dateFormat = dateFormat;
         this.timeFormat = timeFormat;

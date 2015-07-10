@@ -7,7 +7,7 @@ import static edu.common.dynamicextensions.nutility.XmlUtil.writeElementStart;
 
 import java.io.Serializable;
 import java.io.Writer;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -87,10 +87,13 @@ public class SubFormControl extends Control implements Serializable {
 
 	@Override
 	public List<ColumnDef> getColumnDefs() {
-		List<ColumnDef> columnDefs = new ArrayList<ColumnDef>();
-		columnDefs.add(ColumnDef.get("RECORD_ID", ColumnTypeHelper.getIntegerColType()));
-		columnDefs.add(ColumnDef.get("SUB_FORM_RECORD_ID", ColumnTypeHelper.getIntegerColType()));
-		return columnDefs;
+		List<ColumnDef> columns = Collections.emptyList();
+		if (isOneToOne() && isInverse()) {
+			columns = Collections.singletonList(
+					ColumnDef.get(getDbColumnName(), ColumnTypeHelper.getIntegerColType()));
+		}
+		
+		return columns;
 	}
 
 	public String getTableName() {
@@ -212,5 +215,17 @@ public class SubFormControl extends Control implements Serializable {
 
 		new ContainerXmlSerializer(getSubContainer(), writer, props).serializeView();			
 		writeElementEnd(writer, "subForm");				
+	}
+	
+	public boolean isOneToOne() {
+		return noOfEntries == 1;
+	}
+	
+	//
+	// Inverse determines where the foreign key is maintained.
+	// When false this control's table has key to parent table
+	// 
+	public boolean isInverse() {
+		return false;
 	}
 }

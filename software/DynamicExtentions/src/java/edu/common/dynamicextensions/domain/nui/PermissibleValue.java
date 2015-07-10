@@ -98,6 +98,14 @@ public class PermissibleValue  implements Comparable<PermissibleValue>, Serializ
 
 	@Override
 	public int compareTo(PermissibleValue obj) {
-		return this.value.compareToIgnoreCase(obj.value);
+		if (this.value == obj.value) {
+			return 0;
+		} else if (this.value == null) {
+			return -1;
+		} else if (obj.value == null) {
+			return 1;
+		} else {
+			return this.value.compareToIgnoreCase(obj.value);
+		}
 	}
 }

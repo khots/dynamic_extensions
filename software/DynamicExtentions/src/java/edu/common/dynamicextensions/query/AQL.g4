@@ -1,6 +1,6 @@
 grammar AQL;
 
-query         : (SELECT select_list WHERE)? filter_expr limit_expr? (crosstab_expr | ID)? #QueryExpr
+query         : (SELECT select_list WHERE)? filter_expr limit_expr? (crosstab_expr | report_expr)? #QueryExpr
               ;
       
 select_list   : select_element (',' select_element)* #SelectExpr
@@ -23,6 +23,9 @@ limit_expr    : LIMIT INT (',' INT)?                 #LimitExpr
 
 crosstab_expr : CROSSTAB LP LP row+=INT (',' row+=INT)* RP ',' col=INT ',' LP value+=INT (',' value+=INT)* RP (',' BOOL)? RP #CrossTabExpr
               ;
+
+report_expr   : ID (LP SLITERAL (',' SLITERAL)* RP)? #ReportExpr
+              ; 
 
 filter        : arith_expr  OP   arith_expr          #BasicFilter
               | arith_expr  MOP  literal_values      #MvFilter

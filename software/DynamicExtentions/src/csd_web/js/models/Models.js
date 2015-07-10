@@ -17,9 +17,24 @@ var Models = {
 					this.set({
 						// controlCollection : new Array(),
 						controlObjectCollection : {},
-						controlsOrder : new Array()
+						controlsOrder : new Array(),
+						controlRows: {}
 					});
 				},
+
+                                updateControlIdProp: function(controls) {
+					var controlColls = this.get("controlObjectCollection");
+                                        for (var i = 0; i < controls.length; i++) {
+                                          var control = controls[i];
+                                          var existingControl = controlColls[control.controlName];
+                                          existingControl.set({id: control.id});
+
+                                          if (existingControl.get('type') == 'subForm') {
+                                            existingControl.get('subForm').set({id: control.subForm.id});
+                                            existingControl.get('subForm').updateControlIdProp(control.subForm.controlCollection);
+                                          }
+                                        }
+                                },
 
 				getControl : function(name) {
 					if (name == undefined) {

@@ -158,7 +158,6 @@ public class ContainerXmlSerializer implements ContainerSerializer  {
 	}
 	
 	private void emitContainerProps(Container container) {
-		writeElement(writer, "id", 		container.getId());
 		writeElement(writer, "name", 	container.getName());
 		writeElement(writer, "caption", container.getCaption());
 	}
@@ -267,7 +266,7 @@ public class ContainerXmlSerializer implements ContainerSerializer  {
 			csvFile =  new StringBuilder(pvDir).append(File.separator).append(fileName).append(".csv");
 			csvWriter = new CSVWriter(new FileWriter(csvFile.toString()));
 
-			csvWriter.writeNext(PV_CSV_HEADER);
+			//csvWriter.writeNext(PV_CSV_HEADER);
 			
 			for(PermissibleValue pv : permissibleValues) {
 				String val = pv.getValue() != null ? pv.getValue() : "";

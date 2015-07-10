@@ -273,7 +273,7 @@ public class VersionedContainerImpl implements VersionedContainer {
 		nullifyContainerIds(draftContainer);
 		
 		draftContainer.setName(getFormName(draftContainer.getName(), activationDate));
-		Long publishedContainerId = draftContainer.save(usrCtx, jdbcDao, false);
+		Long publishedContainerId = draftContainer.save(usrCtx, jdbcDao); /*, false); */
 		activationDate = (activationDate == null) ? Calendar.getInstance().getTime() : activationDate;
 		
 		VersionedContainerInfo vc = new VersionedContainerInfo();
@@ -327,7 +327,7 @@ public class VersionedContainerImpl implements VersionedContainer {
 	
 	private void applyChangeAndSave(JdbcDao jdbcDao, UserContext usrCtx, Container container, ContainerChangeLog changeLog) {
 		applyChange(container, changeLog);
-		container.save(usrCtx, jdbcDao, false);
+		container.save(usrCtx, jdbcDao); /*, false); */
 	}
 	
 	private void applyChange(Container container, ContainerChangeLog changeLog) {

@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import edu.common.dynamicextensions.napi.FileControlValue;
 import edu.common.dynamicextensions.ndao.ColumnTypeHelper;
 
 public class FileUploadControl extends Control implements Serializable {
@@ -58,5 +59,27 @@ public class FileUploadControl extends Control implements Serializable {
 		writeElementStart(writer, "fileUpload");			
 		super.serializeToXml(writer, props);			
 		writeElementEnd(writer, "fileUpload");		
+	}
+
+	@Override
+	public ValidationStatus validate(Object value) {		
+		if (isMandatory() && value == null) {
+			return ValidationStatus.NULL_OR_EMPTY;
+		}
+		
+		if (value == null) {
+			return ValidationStatus.OK;
+		}
+		
+		if (!(value instanceof FileControlValue)) {
+			return ValidationStatus.INVALID_VALUE;
+		}
+		
+		FileControlValue file = (FileControlValue)value;
+		if (isMandatory() && (file.getFileId() == null || file.getFileId().trim().isEmpty())) {
+			return ValidationStatus.INVALID_VALUE;
+		}
+		
+		return ValidationStatus.OK;
 	}
 }

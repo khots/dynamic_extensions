@@ -101,6 +101,11 @@ public abstract class DefaultControlMapper {
 		if (labelPosition != null) {
 			control.setLabelPosition(getLabelPosition(labelPosition));
 		}
+		
+		String showInGrid = controlProps.getString("showInGrid");
+		if (showInGrid != null && showInGrid.trim().length() > 0) {
+			control.setShowInGrid(Boolean.parseBoolean(showInGrid));
+		}
 
 	}
 
@@ -156,5 +161,6 @@ public abstract class DefaultControlMapper {
 		controlProps.setProperty("labelPosition", getStringLabelPosition(control.getLabelPosition()));
 		controlProps.setProperty(CSDConstants.STATUS, CSDConstants.STATUS_SAVED);
 		controlProps.setProperty("userDefinedName", control.getUserDefinedName());
+		controlProps.setProperty("showInGrid", control.showInGrid());
 	}
 }
