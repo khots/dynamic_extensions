@@ -9,6 +9,7 @@ import edu.common.dynamicextensions.nutility.IoUtil;
 import au.com.bytecode.opencsv.CSVWriter;
 
 public class QueryResultCsvExporter implements QueryResultExporter {
+	private static final String NULL_STR_MARKER = "\0\0\0\0\0";
 	
 	@Override
 	public QueryResponse export(String exportPath, Query query) {
@@ -42,7 +43,7 @@ public class QueryResultCsvExporter implements QueryResultExporter {
 			
 			data =  resp.getResultData();
 			data.setScreener(screener);
-			data.setColumnLabelFormatter(new DefaultResultColLabelFormatter("_"));
+			data.setColumnLabelFormatter(new HierarchicalResultColLabelFormatter("_"));
 			export(out, data);
 			return resp;
 		} finally {
@@ -59,11 +60,18 @@ public class QueryResultCsvExporter implements QueryResultExporter {
 
 		try {
 			csvWriter = getCsvWriter(out);			
-			csvWriter.writeNext(result.getColumnLabels());
+			csvWriter.writeNext(new HierarchicalResultColLabelFormatter("_").getColumnLabels(result));
 
 			Iterator<String[]> iterator = result.stringifiedRowIterator();
 			while (iterator.hasNext()) {
-				csvWriter.writeNext(iterator.next());
+				String[] row = iterator.next();
+				for (int i = 0; i < row.length; ++i) {
+					if (row[i] != null && row[i].equals(NULL_STR_MARKER)) {
+						row[i] = "All";
+					}					
+				}
+				
+				csvWriter.writeNext(row);
 			}			
 		} catch (Exception e) {
 			throw new RuntimeException("Error writing query result data to CSV file", e);

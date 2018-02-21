@@ -4,11 +4,17 @@
 
 package edu.common.dynamicextensions.domain.nui;
 
+import static edu.common.dynamicextensions.nutility.XmlUtil.writeElementEnd;
+import static edu.common.dynamicextensions.nutility.XmlUtil.writeElementStart;
+
 import java.io.Serializable;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
+import edu.common.dynamicextensions.napi.FileControlValue;
 import edu.common.dynamicextensions.ndao.ColumnTypeHelper;
 
 public class FileUploadControl extends Control implements Serializable {
@@ -47,4 +53,33 @@ public class FileUploadControl extends Control implements Serializable {
 	public void getProps(Map<String, Object> props) {
 		props.put("type", "fileUpload");		
 	}	
+	
+	@Override
+	public void serializeToXml(Writer writer, Properties props) {
+		writeElementStart(writer, "fileUpload");			
+		super.serializeToXml(writer, props);			
+		writeElementEnd(writer, "fileUpload");		
+	}
+
+	@Override
+	public ValidationStatus validate(Object value) {		
+		if (isMandatory() && value == null) {
+			return ValidationStatus.NULL_OR_EMPTY;
+		}
+		
+		if (value == null) {
+			return ValidationStatus.OK;
+		}
+		
+		if (!(value instanceof FileControlValue)) {
+			return ValidationStatus.INVALID_VALUE;
+		}
+		
+		FileControlValue file = (FileControlValue)value;
+		if (isMandatory() && (file.getFileId() == null || file.getFileId().trim().isEmpty())) {
+			return ValidationStatus.INVALID_VALUE;
+		}
+		
+		return ValidationStatus.OK;
+	}
 }

@@ -9,8 +9,10 @@ public class ResultColumn implements Serializable {
 	private static final long serialVersionUID = 9037400363981158491L;
 
 	private ExpressionNode columnExpr;
-	
-	private int instance;
+
+    private String name;
+
+    private int instance;
 	
 	private Object value;
 	
@@ -86,4 +88,12 @@ public class ResultColumn implements Serializable {
 		result.append(instance);
 		return result.toString();
 	}
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
 }

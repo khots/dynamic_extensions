@@ -1,11 +1,17 @@
 
 package edu.common.dynamicextensions.domain.nui;
 
+import static edu.common.dynamicextensions.nutility.XmlUtil.writeElement;
+import static edu.common.dynamicextensions.nutility.XmlUtil.writeElementEnd;
+import static edu.common.dynamicextensions.nutility.XmlUtil.writeElementStart;
+
 import java.io.Serializable;
+import java.io.Writer;
 import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import edu.common.dynamicextensions.ndao.ColumnTypeHelper;
 
@@ -80,4 +86,35 @@ public class CheckBox extends Control implements Serializable {
 		props.put("type", "booleanCheckbox");
 		props.put("defaultChecked", isDefaultValueChecked());		
 	}	
+	
+	@Override
+	public void serializeToXml(Writer writer, Properties props) {
+		writeElementStart(writer, "booleanCheckBox");
+		super.serializeToXml(writer, props);
+		
+		writeElement(writer, "checked", isDefaultValueChecked());			
+		writeElementEnd(writer, "booleanCheckBox");		
+	}
+
+	@Override
+	public ValidationStatus validate(Object value) {
+		boolean empty = (value == null || value.toString().trim().isEmpty());
+		if (isMandatory() && empty) {
+			return ValidationStatus.NULL_OR_EMPTY;
+		}
+		
+		if (empty) {
+			return ValidationStatus.OK;
+		}
+		
+		String valStr = value.toString().trim();
+		if (!valStr.equals("true") && 
+			!valStr.equals("false") && 
+			!valStr.equals("1") && 
+			!valStr.equals("0")) {
+			return ValidationStatus.INVALID_VALUE;
+		}
+		
+		return ValidationStatus.OK;		
+	}
 }

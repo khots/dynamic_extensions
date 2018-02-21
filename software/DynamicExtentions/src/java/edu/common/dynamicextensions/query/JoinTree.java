@@ -5,7 +5,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import edu.common.dynamicextensions.domain.nui.Container;
-import edu.common.dynamicextensions.domain.nui.MultiSelectControl;
+import edu.common.dynamicextensions.domain.nui.Control;
 
 public class JoinTree
 {
@@ -19,7 +19,7 @@ public class JoinTree
 	
 	private Container form;
 	
-	private MultiSelectControl field;
+	private Control field;
 	
 	private JoinTree parent;
 	
@@ -95,12 +95,16 @@ public class JoinTree
         this.form = form;
     }
 
-    public MultiSelectControl getField() {
+    public Control getField() {
         return field;
     }
 
-    public void setField(MultiSelectControl field) {
+    public void setField(Control field) {
         this.field = field;
+    }
+    
+    public boolean isMultiSelect() {
+    	return field != null;
     }
 
     public JoinTree getParent() {
@@ -234,8 +238,8 @@ public class JoinTree
     		return getNonLinkParentNode(tree1);
     	}
     	
-    	JoinTree tree1Parent = getNonLinkParentNode(tree1);
-    	JoinTree tree2Parent = getNonLinkParentNode(tree2);
+    	JoinTree tree1Parent = getNonLinkParentNode(tree1.getParent());
+    	JoinTree tree2Parent = getNonLinkParentNode(tree2.getParent());
     	return getCommonAncestor(tree1Parent, tree2Parent);
     }
     
@@ -244,7 +248,8 @@ public class JoinTree
     }
     
     private JoinTree getNonLinkParentNode(JoinTree joinTree) {
-    	if (joinTree.form == null && joinTree.field == null) {
+    	if ((joinTree.form == null && joinTree.field == null) || 
+    		(joinTree.form != null && joinTree.form.getName().equals("extensions")))  {
     		return getNonLinkParentNode(joinTree.getParent());
     	}
     	

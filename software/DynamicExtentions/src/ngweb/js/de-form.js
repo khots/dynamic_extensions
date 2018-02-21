@@ -19,7 +19,7 @@ edu.common.de.RequiredValidator = function(field, dataEl) {
       if (dataEl.prop('type') == 'checkbox') {
         valid = dataEl.prop('checked');
       } else {
-        valid = !!dataEl.val();
+        valid = dataEl.val() && dataEl.val().length != 0;
       }
       el = field.inputEl;
     }
@@ -37,48 +37,49 @@ edu.common.de.RequiredValidator = function(field, dataEl) {
 edu.common.de.RangeValidator = function(field, dataEl, params) {
   this.validate = function() {
     var val = dataEl.val();
-    if (val && !isNaN(Number(val))) {
-      var number = Number(val);
-      if (params.min != null && params.min != undefined && params.min.length > 0 && number < Number(params.min)) {
-        edu.common.de.Utility.highlightError(field.inputEl, field.getCaption() + " cannot be less than " + params.min);
-        return false;
-      } else if (params.max != null && params.max != undefined && params.max.length > 0 && number > Number(params.max)) {
-        edu.common.de.Utility.highlightError(field.inputEl, field.getCaption() + " cannot be more than " + params.max);
-        return false;
-      } else {
-        edu.common.de.Utility.unHighlightError(field.inputEl, field.getTooltip());
-        return true;
-      }
+    if (!$.isNumeric(val)) {
+      return true; // range validator not applicable for non-numeric fields
     }
 
-    return true;
+    var number = Number(val);
+    if ($.isNumeric(params.min) && number < Number(params.min)) {
+      edu.common.de.Utility.highlightError(field.inputEl, field.getCaption() + " cannot be less than " + params.min);
+      return false;
+    } else if ($.isNumeric(params.max) && number > Number(params.max)) {
+      edu.common.de.Utility.highlightError(field.inputEl, field.getCaption() + " cannot be more than " + params.max);
+      return false;
+    } else {
+      edu.common.de.Utility.unHighlightError(field.inputEl, field.getTooltip());
+      return true;
+    }
   };
 };
 
 edu.common.de.NumericValidator = function(field, dataEl, params) {
   this.validate = function() {
     var val = dataEl.val();
-    if (val) {
-      var number = Number(val);
-      if (isNaN(number)) {
-        edu.common.de.Utility.highlightError(field.inputEl, field.getCaption() + " must be a numeric");
-        return false;
-      }
-
-      var numberParts = val.split(".");
-      var noOfDigits = params.noOfDigitsAfterDecimal;
-      if (numberParts.length > 1 && noOfDigits != null && noOfDigits != undefined) {
-        var realPart = numberParts[1];
-        if (realPart.length > noOfDigits) {
-          edu.common.de.Utility.highlightError(field.inputEl, field.getCaption() + " cannot have more than " + noOfDigits + " digits after decimal point");
-          return false;
-        }
-      } else {
-        edu.common.de.Utility.unHighlightError(field.inputEl, field.getTooltip());
-        return true;
-      }
+    if (!val || val.trim().length == 0) { // empty field
+      return true; 
     }
 
+    if (!$.isNumeric(val)) {
+      edu.common.de.Utility.highlightError(field.inputEl, field.getCaption() + " must be a numeric");
+      return false;
+    }
+
+    var numberParts = val.split(".");
+    var noOfDigits = params.noOfDigitsAfterDecimal;
+    if (numberParts.length > 1 && noOfDigits != null && noOfDigits != undefined) {
+      var realPart = numberParts[1].trim();
+      if (realPart.length > noOfDigits) {
+        edu.common.de.Utility.highlightError(
+          field.inputEl, 
+          field.getCaption() + " cannot have more than " + noOfDigits + " digits after decimal point");
+        return false;
+      }
+    } 
+
+    edu.common.de.Utility.unHighlightError(field.inputEl, field.getTooltip());
     return true;
   };
 };
@@ -132,7 +133,12 @@ edu.common.de.FieldValidator = function(rules, field, dataEl) {
 };
 
 edu.common.de.Form = function(args) {
-  this.formDiv = $("#" + args.formDiv);
+  if (typeof args.formDiv == "string") {
+    this.formDiv = $("#" + args.formDiv);
+  } else {
+    this.formDiv = args.formDiv;
+  }
+
   this.fieldObjs = [];
  
   this.formId = args.id;
@@ -203,13 +209,14 @@ edu.common.de.Form = function(args) {
   };
 
   this.render0 = function() {
-    var formCtrls = $("<div/>");
-
     if (this.formDef.rows == undefined) {
       this.formDef = JSON.parse(this.formDef);
     }
+
     var rows = this.formDef.rows;
     this.processFormDef("", rows);
+
+    var formCtrls = $("<div/>");
     for (var i = 0; i < rows.length; ++i) {
       formCtrls.append(this.rowCtrls(rows[i]));
     }
@@ -220,20 +227,47 @@ edu.common.de.Form = function(args) {
       formCtrls.append(this.getActionButtons());
     }
 
-    var panel = edu.common.de.Utility.panel(this.formDef.caption, formCtrls, 'default');
+    var caption = args.showTitle == false ? undefined : this.formDef.caption;
+    var panel = edu.common.de.Utility.panel(caption, formCtrls, 'default');
     this.formDiv.append(panel);
 
     if (this.formData != undefined) {
       this.formData = JSON.parse(this.formData);
     }
 
-    for (var i = 0; i < this.fieldObjs.length; ++i) {
-      if (this.formData) {
-        var recId = this.formData.id;
-        this.fieldObjs[i].setValue(recId, this.formData[this.fieldObjs[i].getName()]);
-      }
-      this.fieldObjs[i].postRender();
+    this.setValue(this.formData);
+  };
+
+  this.setValue = function(formData) {
+    var recId = undefined;
+    if (formData) {
+      recId = formData.id;
     }
+
+    for (var i = 0; i < this.fieldObjs.length; ++i) {
+      var fieldObj = this.fieldObjs[i];
+      if (recId) {
+        fieldObj.setValue(recId, formData[fieldObj.getName()]);
+      }
+      fieldObj.postRender();
+    }
+  };
+
+  this.getValue = function() {
+    var formData = {};
+
+    for (var i = 0; i < this.fieldObjs.length; ++i) {
+      var field = this.fieldObjs[i];
+      var value = field.getValue();
+
+      if (!value) { // note doesn't have value;
+        continue;
+      }
+
+      formData[value.name] = value.value;
+    }
+
+    return formData;
   };
 
   this.rowCtrls = function(row) {
@@ -273,12 +307,15 @@ edu.common.de.Form = function(args) {
   };
 
   this.getActionButtons = function() {
-    var btns =   $("<div/>").addClass("modal-footer");
-    
     var save       = $("<button/>").attr({"type": "button", "id": "saveForm"}).addClass("btn btn-primary").append("Save");
     var cancel     = $("<button/>").attr({"type": "button", "id": "cancelForm"}).addClass("btn btn-default").append("Cancel");
     var deleteForm = $("<button/>").attr({"type": "button", "id": "deleteForm"}).addClass("btn btn-warning").append("Delete");
     var print      = $("<button/>").attr({"type": "button", "id": "print"}).addClass("btn btn-info").append("Print");
+
+    if (!this.formData) {
+      deleteForm.attr('disabled', true);
+      print.attr('disabled', true);
+    }
 
     var that = this;
     save.on("click", function() { that.save(); });
@@ -286,7 +323,10 @@ edu.common.de.Form = function(args) {
     deleteForm.on("click", function() { that.deleteForm(); });
     print.on("click", function() { that.print(); });
     
-    return edu.common.de.Utility.row().append(btns.append(cancel).append(deleteForm).append(print).append(save));
+    var btns =   $("<div/>").addClass("modal-footer")
+      .append(cancel).append(deleteForm)
+      .append(print).append(save);
+    return edu.common.de.Utility.row().append(btns);
   };
 
   this.save = function() {
@@ -309,17 +349,7 @@ edu.common.de.Form = function(args) {
       method = 'POST';
     }
 
-    for (var i = 0; i < this.fieldObjs.length; ++i) {
-      var field = this.fieldObjs[i];
-      var value = field.getValue();
-
-      if (!value) { // note doesn't have value;
-        continue;
-      }
-
-      formData[value.name] = value.value;
-    }
- 
+    $.extend(formData, this.getValue());
     var that = this;
     $.ajax({
       type: method,
@@ -351,79 +381,11 @@ edu.common.de.Form = function(args) {
   };
 
   this.getFormPrintHtml = function() {
-    var formCtrls = $("<tbody/>");
-    for (var i = 0; i < this.formDef.rows.length; ++i) {
-      formCtrls.append(this.readOnlyCtrls(this.formDef.rows[i]));
-    }
-
     return $("<div/>").append(
-      $("<table/>").addClass("table table-condensed table-bordered").css("width", "100%").append(formCtrls));
-  };
-
-  this.readOnlyCtrls = function(fields) {
-    var trs = [];
-    for (var i = 0; i < fields.length; ++i) {
-      var tr = $("<tr/>");
-      tr.append($("<td/>").addClass("de-print-label")
-        .append($("<label/>").append(fields[i].caption)));
-
-      if (fields[i].type != 'subForm') {
-        var val = this.formData[fields[i].name];
-        if (fields[i].type == 'fileUpload' && !val && val != undefined) {
-          val = val.filename;
-        } 
-
-        if (val == undefined || val == null) {
-          val = "N/A";
-        } 
-    
-        if (val instanceof Array) { 
-          val = val.join();
-        }
-
-        tr.append($("<td/>").addClass("de-print-value").append(val));
-      } else {
-        var subFormData = this.formData[fields[i].name];
-        var subFormDef = fields[i];
-
-        var tableEl = $("<table/>").addClass("table table-condensed");
-        var thEl = $("<tr/>");
-     
-        var fieldNames = [];
-        for (var j = 0; j < subFormDef.rows.length; ++j) {
-          for (var k = 0; k < subFormDef.rows[j].length; ++k) {
-            thEl.append($("<th/>").append(subFormDef.rows[j][k].caption));          
-            fieldNames.push(subFormDef.rows[j][k].name);
-          }        
-        }
-        tableEl.append($("<thead/>").append(thEl));
-
-        var tbodyEl = $("<tbody/>");
-        tableEl.append(tbodyEl);
-
-        for (var j = 0; j < subFormData.length; ++j) {
-          var trEl = $("<tr/>");
-          for (var k = 0; k < fieldNames.length; ++k) {
-            var val = subFormData[j][fieldNames[k]];
-            if (val == undefined || val == null) {
-              val = "N/A";
-            }
-
-            if (val instanceof Array) {
-              val = val.join();
-            }
-
-            trEl.append($("<td/>").append(val));
-          }
-          tbodyEl.append(trEl);
-        }
-
-        tr.append($("<td/>").addClass("de-print-value").append(tableEl));    
-      }
-      
-      trs.push(tr);
-    }
-    return trs;
+      $("<table/>")
+        .addClass("table table-condensed table-bordered")
+        .css("width", "100%")
+        .append(this.getPrintEl()));
   };
 
   this.deleteForm = function() {
@@ -442,214 +404,31 @@ edu.common.de.Form = function(args) {
 
     return valid;
   };
-};
 
-edu.common.de.DataTable = function(args) {
-  this.formDiv = $("#" + args.formDiv);
-  this.formId = args.formId;
-  this.formDef = args.formDef;
-  this.formDefUrl = args.formDefUrl;
-  this.tableData = args.tableData;
-  this.mode = args.mode;
-
-  this.tableRowsData = [];
-  this.fieldObjs = [];
-  this.formDefXhr = null;
-  this.tableDataXhr = null;
-
-  this.setMode = function(mode) {
-    this.mode = mode;
-  }
-
-  this.getMode = function() {
-      return this.mode;
-  }
-
-  this.clear = function() {
-    this.formDiv.empty();
-  }
-
-  if (!this.formDef && this.formDefUrl) {
-     var url = this.formDefUrl.replace(":formId", this.formId);
-     this.formDefXhr = $.ajax({type: 'GET', url: url});
-  }
-
-  this.render = function() {
-    var that = this;
-    if (this.formDefXhr) {
-      this.formDefXhr.then(function(formDef) {
-        that.formDef = formDef;
-        if(tableData != null && tableData != undefined) {
-          this.render0();
-        }
-      });
-    } else {
-      if(tableData != null && tableData != undefined) {
-        this.render0();
-      }
-    }
-  };
-
-  this.render0 = function() {
-    this.formDiv.empty();
-    this.tableRowsData = [];
-    var trs = [];
-    // Render Table Header Part
-    if (this.formDef.rows == undefined) {
-      this.formDef = JSON.parse(this.formDef);
-    }
-    var rows = this.formDef.rows;
-    var tr = $("<tr/>");
-
-    var th = $("<th/>").append(args.idColumnLabel).addClass("table-th").css("width", "200px");
-    if(rows.length > 5) {
-      th.css("width", "200px")
-    }
-    tr.append(th);
-
-    for(var j =0 ; j < rows.length; j++) {
-      var row = rows[j];
-      for(k = 0 ; k < row.length; k++ ) {
-        tr.append($("<th/>").append(row[k].caption).css("width", "200px"));
-      }
-    }
-    var tableHeader = $("<thead/>");
-    tableHeader.append(tr);
-
-    for(var l = 0; l< this.tableData.length; l++ ) {
-      var tr = this.renderFormRecords(this.tableData[l]);
-      trs = trs.concat(tr);
-    }
-
-    var formCtrls = $("<tbody/>");
-    formCtrls.append(trs);
-
-    var tableWidth = "100%";
-    if(this.formDef.rows.length > 5) {
-      var width = 200 * rows.length;
-      tableWidth = width.toString().concat("px");
-    }
-    var tbl = $("<div/>").css("width", tableWidth)
-    tbl.append(
-               $("<table/>").addClass("table table-striped table-bordered").append(tableHeader).append(formCtrls));
-    this.formDiv.append(tbl);
-
-  };
-
-  this.renderFormRecords = function(dataTableRow) {
-    var trs = [];
-    var formDataRecords = dataTableRow.records;
-    if(formDataRecords.length > 0) {
-      for(var i = 0; i< formDataRecords.length; i++) {
-        trs.push( this.renderTableRow(this.mode, dataTableRow.key, formDataRecords[i]) );
-      }
-    } else {
-      trs.push( this.renderTableRow(this.mode, dataTableRow.key, null) );
-    }
-    return trs;
-  }
-
-  this.renderTableRow = function(mode, key, formData) {
-    this.fieldObjs = [];
-    var tr = $("<tr/>");
-    tr.append($("<td/>").append(key.label));
-    var rows = this.formDef.rows;
-    for(var j = 0; j < rows.length; j++) {
-      var row = rows[j];
-      for(k = 0; k < row.length; k++ ) {
-        tr.append($("<td/>").append(this.createFieldEl(mode, row[k], formData)));
-      }
-    }
-
+  this.getPrintEl = function() {
+    var els = [];
     for (var i = 0; i < this.fieldObjs.length; ++i) {
-      this.fieldObjs[i].postRender();
+      if (this.fieldObjs[i] instanceof edu.common.de.Note) {
+        continue;
+      }
+
+      var tr = $("<tr/>");
+
+      var captionTd = $("<td/>")
+        .addClass("de-print-label")
+        .append($("<label/>").append(this.fieldObjs[i].getCaption()));   
+      tr.append(captionTd);
+
+      var valueTd = $("<td/>")
+        .addClass("de-print-value")
+        .append(this.fieldObjs[i].getPrintEl ? this.fieldObjs[i].getPrintEl() : "Undefined Print Fn");
+      tr.append(valueTd);
+
+      els.push(tr);
     }
 
-    var recordId = (formData != undefined && formData != null) ? (formData.id != undefined) ? formData.id : formData.recordId : null;
-    this.tableRowsData.push({fieldObjs:this.fieldObjs, recordId:recordId, rowId:key.id });
-    return tr;
-  }
-
-  this.createFieldEl = function(mode, field, formData) {
-
-      if (field.type == 'checkbox') { field.type = 'listbox'; }
-      if (field.type == 'radiobutton') {field.type = 'combobox';}
-
-      var fieldObj = edu.common.de.FieldFactory.getField(field, undefined, args);
-      var inputEl = fieldObj.render();
-      this.fieldObjs.push(fieldObj);
-      var recId = (formData != null && formData != undefined) ? (formData.id != undefined) ? formData.id : formData.recordId : null;
-      var value = (formData != null && formData != undefined) ? formData[field.name] : null;
-      fieldObj.setValue(recId,value);
-      if(mode == 'edit') {
-        return inputEl;
-      } else {
-        return fieldObj.getDisplayValue().value;
-      }
-  }
-
-  this.setData = function(tableData) {
-   this.tableData =  tableData;
-   this.render0();
-  }
-
-  this.getData = function() {
-    var tblRowsFormData = [];
-    for(var i = 0; i< this.tableRowsData.length; i++) {
-      var fieldObjs = this.tableRowsData[i].fieldObjs;
-
-      var appData = $.extend({},args.appData);
-      appData.id = this.tableRowsData[i].rowId;
-
-      if (!this.validate(fieldObjs)) {
-        if (args.onValidationError) {
-          args.onValidationError();
-        }
-        return;
-      }
-
-      var formData = {appData: appData};
-      var recordId = this.tableRowsData[i].recordId;
-      if (recordId) {
-        formData.recordId = recordId;
-      }
-
-      for (var j = 0; j < fieldObjs.length; ++j) {
-        var field = fieldObjs[j];
-        var value = field.getValue();
-        if (!value) { // note doesn't have value;
-          continue;
-        }
-        formData[value.name] = value.value;
-      }
-        tblRowsFormData.push(formData);
-    }
-    return tblRowsFormData;
-  }
-
-  this.validate = function(fieldObjs) {
-    var valid = true;
-    for (var i = 0; i < fieldObjs.length; ++i) {
-      if (!fieldObjs[i].validate()) { // validate all fields
-        valid = false;
-      }
-    }
-      return valid;
-  };
-
-  this.copyFirstToAll = function() {
-    var firstRowFieldObjs = this.tableRowsData[0].fieldObjs;
-    for(var i = 1; i< this.tableRowsData.length; i++) {
-        var fieldObjs = this.tableRowsData[i].fieldObjs;
-        var recordId = this.tableRowsData[i].recordId;
-        for(var j =0; j < fieldObjs.length; j++) {
-          var value = firstRowFieldObjs[j].getValue();
-          if(value != undefined) {
-             fieldObjs[j].setValue(recordId, value.value);
-          }
-        }
-    }
-  }
+    return $("<tbody/>").append(els);
+   };
 };
 
 edu.common.de.FieldFactory = {
@@ -674,8 +453,10 @@ edu.common.de.FieldFactory = {
       fieldObj = new edu.common.de.SelectField(id, field, args);
     } else if (field.type == 'radiobutton' || field.type == 'checkbox') {
       fieldObj = new edu.common.de.GroupField(id, field, args);
-    } else if (field.type == 'subForm') {
+    } else if (field.type == 'subForm' && !field.singleEntry) {
       fieldObj = new edu.common.de.SubFormField(id, field, args);
+    } else if (field.type == 'subForm' && field.singleEntry) {
+      fieldObj = new edu.common.de.ComponentForm(id, field, args);
     } else if (field.type == 'fileUpload') {
       fieldObj = new edu.common.de.FileUploadField(id, field, args);
     } else if (field.type == 'label') {
@@ -697,7 +478,10 @@ edu.common.de.TextField = function(id, field) {
   this.validator;
 
   this.render = function() {
-    this.inputEl = $("<input/>").prop({id: id, type: 'text', title: field.toolTip, value: field.defaultValue}).addClass("form-control");
+    this.inputEl = $("<input/>")
+      .prop({id: id, type: 'text', title: field.toolTip, value: field.defaultValue})
+      .addClass("form-control");
+
     this.validator = new edu.common.de.FieldValidator(field.validationRules, this);
     return this.inputEl;
   };
@@ -733,6 +517,10 @@ edu.common.de.TextField = function(id, field) {
   this.validate = function() {
     return this.validator.validate();
   };
+
+  this.getPrintEl = function() {
+    return edu.common.de.Utility.getPrintEl(this);
+  };
 };
 
 edu.common.de.NumberField = function(id, field) {
@@ -740,7 +528,10 @@ edu.common.de.NumberField = function(id, field) {
   this.validator;
 
   this.render = function() {
-    this.inputEl = $("<input/>").prop({id: id, type: 'text', title: field.toolTip, value: field.defaultValue}).addClass("form-control");
+    this.inputEl = $("<input/>") 
+      .prop({id: id, type: 'text', title: field.toolTip, value: field.defaultValue})
+      .addClass("form-control");
+
     var rules = field.validationRules.concat({name: 'numeric', params: {noOfDigitsAfterDecimal: field.noOfDigitsAfterDecimal}});
     this.validator = new edu.common.de.FieldValidator(rules, this);
     return this.inputEl;
@@ -777,6 +568,10 @@ edu.common.de.NumberField = function(id, field) {
   this.validate = function() {
     return this.validator.validate();
   };
+
+  this.getPrintEl = function() {
+    return edu.common.de.Utility.getPrintEl(this);
+  };
 };
 
 edu.common.de.TextArea = function(id, field) {
@@ -784,7 +579,14 @@ edu.common.de.TextArea = function(id, field) {
   this.validator;
 
   this.render = function() {
-    this.inputEl = $("<textarea/>").prop({id: id, rows: field.noOfRows, title: field.toolTip, value: field.defaultValue}).addClass("form-control");
+    var noOfRows = 2;
+    if (field.noOfRows && field.noOfRows > 0) {
+      noOfRows = field.noOfRows;
+    }
+
+    this.inputEl = $("<textarea/>")
+      .prop({id: id, rows: noOfRows, title: field.toolTip, value: field.defaultValue})
+      .addClass("form-control");
     this.validator = new edu.common.de.FieldValidator(field.validationRules, this);
     return this.inputEl;
   };
@@ -812,7 +614,6 @@ edu.common.de.TextArea = function(id, field) {
     return {name: field.name, value: this.inputEl.val()};
   }
 
-
   this.setValue = function(recId, value) {
     this.recId = recId;
     this.inputEl.val(value);
@@ -821,21 +622,49 @@ edu.common.de.TextArea = function(id, field) {
   this.validate = function() {
     return this.validator.validate();
   };
+
+  this.getPrintEl = function() {
+    return edu.common.de.Utility.getPrintEl(this);
+  };
 };
 
 edu.common.de.DatePicker = function(id, field) {
   this.inputEl = null;
+  this.dateEl = null;
+  this.timeEl = null;
   this.validator;
 
   this.render = function() {
-    this.inputEl = $("<input/>").prop({id: id, type: 'text', title: field.toolTip});
-    this.inputEl.addClass("form-control de-date-picker");
-    this.validator = new edu.common.de.FieldValidator(field.validationRules, this);
+    this.dateEl = $("<input/>")
+      .prop({id: id, type: 'text'})
+      .addClass("form-control");
+
+    var dateField = $("<div/>").addClass("plus-addon plus-addon-input-right de-date-picker")
+      .append(this.dateEl)
+      .append($("<span/>").addClass("glyphicon glyphicon-calendar"));
+
+    this.inputEl = $("<div/>"); 
+    this.inputEl.append(dateField);
 
     var format = field.format;
-    // minViewMode = 0/days
-    // minViewMode = 1/months
-    // minViewMode = 2/years
+    if (format && format.indexOf('HH:mm') != -1) {
+      dateFmt = dateFormat.concat(" HH:mm");
+      this.timeEl = $("<input/>")
+        .prop({id: 'time', type: 'text'})
+        .addClass("form-control");
+
+      dateField.css("width","59%");
+
+      var timeField = $("<div/>").addClass("plus-addon plus-addon-input-right de-time-picker")
+        .append(this.timeEl)
+        .append($("<span/>").addClass("glyphicon glyphicon-time"));
+
+      this.inputEl.append(timeField);
+    }
+
+    this.inputEl.prop({title: field.toolTip});
+    this.validator = new edu.common.de.FieldValidator(field.validationRules, this, this.dateEl);
+
     if (format && format.length != 0) {
       format = format.toUpperCase();
       if (format.indexOf("D") != -1 && format.indexOf("M") != -1 && format.indexOf("Y") != -1) {
@@ -851,10 +680,18 @@ edu.common.de.DatePicker = function(id, field) {
       format = 0; // minViewMode = 0 days
     }
 
-    this.inputEl.datepicker({
+    this.dateEl.datepicker({
       format: typeof dateFormat == "undefined" ? format : dateFormat,
       autoclose: true,
       minViewMode: format});
+
+    if (this.timeEl) {
+      this.timeEl.timepicker({
+        defaultTime: false,
+        showMeridian: false
+      });
+    }
+
     return this.inputEl;
   };
 
@@ -874,20 +711,41 @@ edu.common.de.DatePicker = function(id, field) {
   };
 	  
   this.getValue = function() {
-    return {name: field.name, value: this.inputEl.val()};
+    var val = this.dateEl.val();
+    if (this.timeEl) {
+      val = val + ' ' + this.timeEl.val();
+    }
+    return {name: field.name, value: val};
   };
 
   this.setValue = function(recId, value) {
     this.recId = recId;
-    this.inputEl.val(value);
+    if (!value || value.trim().length == 0) {
+      return;
+    }
+
+    var format = field.format;
+    if (format.indexOf('HH:mm') != -1) { // TODO: Fix this
+      var dateTime = value.split(" ");
+      this.dateEl.val(dateTime[0]);
+      this.timeEl.val(dateTime[1]);
+    } else {
+      this.dateEl.val(value);
+    }
+
+    this.dateEl.datepicker('update');
   };
 
   this.getDisplayValue = function() {
-    return {name: field.name, value: this.inputEl.val()};
+    return this.getValue();
   }
   
   this.validate = function() {
     return this.validator.validate();
+  };
+
+  this.getPrintEl = function() {
+    return edu.common.de.Utility.getPrintEl(this);
   };
 };
 
@@ -897,8 +755,11 @@ edu.common.de.BooleanCheckbox = function(id, field) {
   this.validator;
 
   this.render = function() {
-    this.dataEl = $("<input/>").prop({type: 'checkbox', id: id, value: 'true', title: field.toolTip});
-    this.inputEl = $("<div/>").append(this.dataEl).css("padding", "6px 0px");
+    this.dataEl = $("<input/>")
+      .prop({type: 'checkbox', id: id, value: 'true', title: field.toolTip});
+    this.inputEl = $("<div/>")
+      .append(this.dataEl).css("padding", "6px 0px");
+
     this.validator = new edu.common.de.FieldValidator(field.validationRules, this, this.dataEl);
     this.setValue(undefined, field.defaultChecked)
     return this.inputEl;
@@ -943,6 +804,10 @@ edu.common.de.BooleanCheckbox = function(id, field) {
   this.validate = function() {
     return this.validator.validate();
   };
+
+  this.getPrintEl = function() {
+    return edu.common.de.Utility.getPrintEl(this);
+  };
 };
 
 edu.common.de.SelectField = function(id, field) {
@@ -950,9 +815,10 @@ edu.common.de.SelectField = function(id, field) {
   this.validator;
 
   this.render = function() {
+    var isMultiSelect = (field.type == 'listbox' || field.type == 'multiSelectListbox');
     this.inputEl = $("<select/>")
-      .prop({id: id, multiple: (field.type == 'listbox' || field.type == 'multiSelectListbox'), title: field.toolTip})
-      .addClass("form-control")
+      .prop({id: id, multiple: isMultiSelect, title: field.toolTip})
+      .addClass("de-select")
       .append($("<option/>"));
 
     this.validator = new edu.common.de.FieldValidator(field.validationRules, this);
@@ -960,11 +826,13 @@ edu.common.de.SelectField = function(id, field) {
       var pv = field.pvs[i];
       this.inputEl.append($("<option/>").prop("value", pv.value).append(pv.value));
     }
+
     return this.inputEl;
   };
 
   this.postRender = function() {
-    this.inputEl.chosen({width: "100%", allow_single_deselect: true});
+    this.inputEl.select2({allowClear: true});
+    this.inputEl.siblings('div.select2-container').prop({title: field.toolTip});
   };
 
   this.getName = function() {
@@ -987,17 +855,21 @@ edu.common.de.SelectField = function(id, field) {
     value = edu.common.de.Utility.getValueByDataType(field, value);
     this.recId = recId;
     this.inputEl.val(value);
-    this.inputEl.trigger("chosen:updated");
+    this.inputEl.trigger('change');
   };
 
   this.getDisplayValue = function() {
     var value = this.inputEl.val();
-    value = (value instanceof Array) ? value.join().substring(1) : value;
+    value = (value instanceof Array) ? value.join() : value;
     return {name: field.name, value: value};
   };
   
   this.validate = function() {
     return this.validator.validate();
+  };
+
+  this.getPrintEl = function() {
+    return edu.common.de.Utility.getPrintEl(this);
   };
 };
 
@@ -1027,6 +899,7 @@ edu.common.de.GroupField = function(id, field) {
       if (field.defaultValue != undefined &&  field.defaultValue.value == pv.value) {
         defaultVal = true;
       }
+
       var btn = $("<input/>").prop({type: type, name: field.name + id, value: pv.value, title: field.toolTip, checked: defaultVal});
       currentDiv.append($("<label/>").addClass(typeclass).append(btn).append(pv.value).css("width", width));
       this.inputEls.push(btn);
@@ -1084,7 +957,7 @@ edu.common.de.GroupField = function(id, field) {
       if ($.inArray(this.inputEls[i].val(), checked) != -1) {
         this.inputEls[i].prop('checked', true);
       } else {
-          this.inputEls[i].prop('checked', false);
+        this.inputEls[i].prop('checked', false);
       }
     }
   };
@@ -1097,6 +970,55 @@ edu.common.de.GroupField = function(id, field) {
   
   this.validate = function() {
     return this.validator.validate();
+  };
+
+  this.getPrintEl = function() {
+    return edu.common.de.Utility.getPrintEl(this);
+  };
+};
+
+edu.common.de.ComponentForm = function(id, field, args) {
+  this.render = function() {
+    this.el = $("<div/>");
+    this.form = new edu.common.de.Form({
+      formDef: field, 
+      formDiv: this.el, 
+      showActionBtns: false,
+      showTitle: false
+    });
+    this.form.render();
+    return this.el;
+  }
+
+  this.postRender = function() {
+  };
+
+  this.getCaption = function() {
+    return field.caption;
+  };
+
+  this.getName = function() {
+    return field.name;
+  };
+
+  this.getValue = function() {
+    return {name: field.name, value: [this.form.getValue()]};
+  };
+
+  this.setValue = function(recId, value) {
+    var formData = {}
+    if (value && value instanceof Array) {
+      formData = value[0];
+    }
+    this.form.setValue(formData);
+  };
+
+  this.validate = function() {
+    return this.form.validate();
+  };
+
+  this.getPrintEl = function() {
+    return $("<table/>").addClass("table table-condensed").append(this.form.getPrintEl());
   };
 };
 
@@ -1118,12 +1040,12 @@ edu.common.de.SubFormField = function(id, sfField, args) {
   };
 
   this.getWidthClass = function(numFields) {
-    var width = "9%";
-    if (numFields < 10) {
-      width = Math.floor(95 / numFields) + "%";
+    var width = Math.floor(95 / numFields);
+    if (width < 20) {
+      width = 20;
     }
 
-    return width;
+    return width + "%";
   };
 
   this.fields = this.getFields();
@@ -1132,10 +1054,16 @@ edu.common.de.SubFormField = function(id, sfField, args) {
 
   this.render = function() {
     this.sfFieldsEl = $("<div/>");
+  
+    var subFormContent = $("<div/>").addClass("de-sf-content");
+    subFormContent
+      .append(this.getHeading())
+      .append(this.sfFieldsEl);
+
+
     this.subFormEl = $("<div/>").prop({id: id, title: sfField.toolTip})
-                       .append(this.getHeading())
-                       .append(this.sfFieldsEl)
-                       .append(this.getAddButton());
+      .append(subFormContent)
+      .append(this.getAddButton());
 
     return this.subFormEl;
   };
@@ -1145,6 +1073,10 @@ edu.common.de.SubFormField = function(id, sfField, args) {
 
   this.getName = function() {
     return sfField.name;
+  };
+
+  this.getCaption = function() {
+    return sfField.caption;
   };
 
   this.getValue = function() {
@@ -1187,11 +1119,25 @@ edu.common.de.SubFormField = function(id, sfField, args) {
     return sfField.name;
   };
 
+  var getSfFieldWidth = function(field) { 
+    if (field.type != 'datePicker') {
+      return 20 + "%";
+    }
+
+    if (field.format && field.format.indexOf("HH:mm") != -1) {
+      return 25 + "%";
+    }
+
+    return 20 + "%";
+  };
+    
   this.getHeading = function() {
-    var heading = $("<div/>").addClass("form-group clearfix");
+    var heading = $("<div/>").addClass("form-group clearfix").css("white-space", "nowrap");
     for (var i = 0; i < this.fields.length; ++i) {
       var field = this.fields[i];
-      var column = $("<div/>").css("width", this.widthCls).addClass("de-sf-field form-inline").append(field.caption);
+      var column = $("<div/>").css("width", getSfFieldWidth(field))
+        .addClass("de-sf-cell")
+        .append(field.caption);
       heading.append(column);
     }
 
@@ -1221,12 +1167,16 @@ edu.common.de.SubFormField = function(id, sfField, args) {
   this.addSubFormFieldsRow = function(postRender, recId) {
     var fieldObjs = [];
 
-    var rowDiv = $("<div/>").addClass("form-group clearfix");
+    var rowDiv = $("<div/>").addClass("form-group clearfix").css("white-space", "nowrap");
     for (var i = 0; i < this.fields.length; ++i) {
       var field = this.fields[i];
+      if (field.type == 'subForm') {
+        continue;
+      }
+
       var fieldObj = edu.common.de.FieldFactory.getField(field, this.rowIdx, args);
       var fieldEl = fieldObj.render();
-      rowDiv.append(this.cell(fieldEl));
+      rowDiv.append(this.cell(fieldEl, getSfFieldWidth(field)));
       fieldObjs.push(fieldObj);
     }
 
@@ -1252,7 +1202,7 @@ edu.common.de.SubFormField = function(id, sfField, args) {
       width = this.widthCls;
     }
 
-    return $("<div/>").css("width", width).addClass("form-inline de-sf-field").append(el);
+    return $("<div/>").css("width", width).addClass("de-sf-cell").append(el);
   };
   
   this.validate = function() {
@@ -1267,6 +1217,39 @@ edu.common.de.SubFormField = function(id, sfField, args) {
     }
 
     return valid;
+  };
+
+  this.getPrintEl = function() {
+    if (!this.fieldObjsRows || this.fieldObjsRows.length == 0) {
+      return $("<span/>").append("N/A");
+    }
+
+    var theadRow = $("<tr/>");
+    for (var i = 0; i < this.fieldObjsRows[0].length; ++i) {
+      var field = this.fieldObjsRows[0][i];
+      if (field instanceof edu.common.de.Note) {
+        continue;
+      }
+
+      theadRow.append($("<th/>").append(field.getCaption()));
+    }
+
+    var thead = $("<thead/>").append(theadRow);
+
+    var tbody = $("<tbody/>");
+    for (var i = 0; i < this.fieldObjsRows.length; ++ i) {
+      var tr = $("<tr/>");
+      for (var j = 0; j < this.fieldObjsRows[i].length; ++j) {
+        var field = this.fieldObjsRows[i][j];
+        if (field instanceof edu.common.de.Note) {
+          continue;
+        }
+        tr.append($("<td/>").append(edu.common.de.Utility.getPrintEl(field)));
+      }
+      tbody.append(tr);
+    }
+
+    return $("<table/>").addClass("table table-condensed").append(thead).append(tbody);
   };
 };
 
@@ -1291,10 +1274,9 @@ edu.common.de.FileUploadField = function(id, field, args) {
 
   this.render = function() {
     var that = this;
-
-    this.inputEl  = $("<div/>").prop({title: field.toolTip})
-    	.addClass("de-fileupload form-control clearfix");
-
+    this.inputEl  = $("<div/>") 
+      .prop({title: field.toolTip})
+      .addClass("de-fileupload form-control clearfix");
     this.fileNameSpan = $("<span/>");
     this.inputEl.append(this.fileNameSpan);
 
@@ -1350,7 +1332,6 @@ edu.common.de.FileUploadField = function(id, field, args) {
   };
 
   this.postRender = function() {
-    
   };
 
   this.getName = function() {
@@ -1400,11 +1381,19 @@ edu.common.de.FileUploadField = function(id, field, args) {
   };
 
   this.getDisplayValue = function() {
-    return {name: field.name, value: this.value};
+    var filename = undefined;
+    if (this.value) {
+      filename = this.value.filename;
+    }
+    return {name: field.name, value: filename};
   };
 
   this.validate = function() {
     return this.validator.validate();
+  };
+
+  this.getPrintEl = function() {
+    return edu.common.de.Utility.getPrintEl(this);
   };
 };
 
@@ -1441,6 +1430,10 @@ edu.common.de.Note = function(id, field) {
   this.validate = function() {
     return true;
   };
+
+  this.getDisplayValue = function() {
+    return {name: field.name, value: field.caption};
+  }
 };
 
 edu.common.de.UnknownField = function(id, field) {
@@ -1458,6 +1451,7 @@ edu.common.de.UnknownField = function(id, field) {
   };
 
   this.getValue = function(value) {
+    return {name: field.name, value: "Unknown"};
   };
 
   this.setValue = function(recId, value) {
@@ -1466,7 +1460,12 @@ edu.common.de.UnknownField = function(id, field) {
   this.validate = function() {
     return false;
   };
+
+  this.getPrintEl = function() {
+    return edu.common.de.Utility.getPrintEl(this);
+  };
 };
+
 
 edu.common.de.Utility = {
   /**
@@ -1506,14 +1505,14 @@ edu.common.de.Utility = {
 
   highlightError: function(el, tooltip) {
     if (el.is('select')) {
-      el.next().attr('title', tooltip);
+      el.siblings('div.select2-container').attr('title', tooltip);
     }
     el.addClass('de-input-error').attr('title', tooltip);
   },
 
   unHighlightError: function(el, tooltip) {
     if (el.is('select')) {
-      el.next().attr('title', tooltip);
+      el.siblings('div.select2-container').attr('title', tooltip);
     }
     el.removeClass('de-input-error').attr('title', tooltip);
   },
@@ -1532,7 +1531,7 @@ edu.common.de.Utility = {
         } else if (field.dataType == "FLOAT") {
           parsedVal[i] = parseFloat(value[i]).toString();
         }
-	  }
+      }
     } else {
       if (field.dataType == "INTEGER") {
         parsedVal = parseInt(value);
@@ -1542,6 +1541,280 @@ edu.common.de.Utility = {
       parsedVal = parsedVal.toString();
     }
     return parsedVal;
+  },
+
+  getPrintEl: function(fieldObj) {
+    var val = fieldObj.getDisplayValue().value;
+    if (val == undefined || val == null) {
+      val = "N/A";
+    }
+
+    if (val instanceof Array) {
+      val = val.join(", ");
+    }
+
+    return $("<span/>").append(val);
   }
-	  
 };
+
+edu.common.de.Extend = function(props) {
+  var parent = this;
+  var child = function() { return parent.apply(this, arguments); };
+
+  $.extend(child, parent);
+  if (props) {
+    $.extend(child.prototype, props);
+  }
+
+  child.__super__ = parent.prototype;
+  return child;
+};
+
+edu.common.de.LookupField = function(params) {
+  this.inputEl = null;
+
+  this.control = null;
+
+  this.value = '';
+
+  this.validator;
+
+  var timeout = undefined;
+
+  var field = params.field;
+ 
+  var id = params.id;
+
+  var that = this;
+
+  var qFunc = function(qTerm, qCallback) {
+    var timeInterval = 500;
+    if (qTerm.length == 0) {
+      timeInterval = 0;
+    }
+
+    if (timeout != undefined) {
+      clearTimeout(timeout);
+    }
+
+    timeout = setTimeout(
+      function() { 
+        var promise = that.search(qTerm);
+        $.when(promise).done(
+          function(results) {
+            qCallback(results);
+          }
+        );
+      }, 
+      timeInterval);
+  };
+
+  var onChange = function(selected) { 
+    if (selected) {
+      that.value = selected.id;
+    } else {
+      that.value = '';
+    }
+  };
+
+  var initSelection = function(elem, callback) {
+    if (!that.value) {
+      $.when(that.getDefaultValue()).done(
+        function(result) {
+          that.value = result.id;
+          that.control.setValue(result.id);
+          callback(result);
+        }
+      );
+    } else {
+      $.when(that.lookup(that.value)).done(
+        function(result) {
+          callback(result);
+        }
+      );
+    }
+  };
+
+  this.render = function() {
+    this.inputEl = $("<input/>")
+      .prop({id: id, title: field.toolTip, value: field.defaultValue})
+      .css("border", "0px").css("padding", "0px")
+      .val("")
+      .addClass("form-control");
+    this.validator = new edu.common.de.FieldValidator(field.validationRules, this);
+    return this.inputEl;
+  };
+
+  this.postRender = function() {
+    this.control = new Select2Search(this.inputEl);
+    this.control.onQuery(qFunc).onChange(onChange);
+    this.control.onInitSelection(initSelection).render();
+    if (this.value) {
+      this.control.setValue(this.value);
+    }
+  };
+
+  this.getName = function() {
+    return field.name;
+  };
+
+  this.getCaption = function() {
+    return field.caption;
+  };
+
+  this.getTooltip = function() {
+    return field.toolTip ? field.toolTip : field.caption;
+  };
+
+  this.getValue = function() {
+    var val = this.control.getValue();
+    if (val) {
+      val = val.id;
+    }
+
+    return {name: field.name, value: val ? val : ''};
+  };
+
+  this.getDisplayValue = function() {
+    if(!this.control) {
+      this.postRender();
+    }
+    var val = this.control.getValue();
+    if (val) {
+      var displayValue = val.text;
+    }
+    return {name: field.name, value: displayValue ? displayValue : '' };
+  }
+
+  this.setValue = function(recId, value) {
+    this.recId = recId;
+    this.value = value ? value : '';
+    if (this.control) {
+      this.control.setValue(value);
+    }
+  };
+
+  this.validate = function() {
+    return this.validator.validate();
+  };
+
+  this.getPrintEl = function() {
+    return edu.common.de.Utility.getPrintEl(this);
+  };
+
+  this.getDefaultValue = function() {
+    return this.svc.getDefaultEntity();
+  };
+
+  this.lookup = function(id) {
+    return this.svc.getEntity(id);
+  };
+
+  this.search = function(qTerm) {
+    return this.svc.getEntities(qTerm);
+  };
+};
+
+edu.common.de.LookupField.extend = edu.common.de.Extend;
+
+edu.common.de.LookupSvc = function(params) {
+  var entitiesMap = {};
+ 
+  var defaultList = [];
+
+  var defaultValue;
+
+  this.getEntities = function(queryTerm) {
+    var deferred = $.Deferred();
+    if (!queryTerm && defaultList.length > 0) {
+      deferred.resolve(defaultList);
+      return deferred.promise();
+    }
+
+    var baseUrl = this.getApiUrl();
+    var xhr;
+    if (queryTerm) {      
+      xhr = $.ajax({type: 'GET', url: baseUrl, data: this.searchRequest(queryTerm)});
+    } else if (this.getAllXhr) {
+      xhr = this.getAllXhr;
+    } else {
+      xhr = this.getAllXhr = $.ajax({type: 'GET', url: baseUrl, data: this.searchRequest(queryTerm)});
+    }
+   
+   
+    var that = this;
+    xhr.done(
+      function(data) {
+        var result = that.formatResults(data);
+        if (!queryTerm) {
+          defaultList = result;
+        }
+
+        deferred.resolve(result);
+      }
+    ).fail(
+      function(data) {
+        alert("Failed to load entities list");
+        deferred.resolve([]);
+      }
+    );
+
+    return deferred.promise();
+  };
+
+  this.getEntity = function(id) {
+    var deferred = $.Deferred(); 
+    var entity = entitiesMap[id];
+    if (entity) {
+      deferred.resolve(entity);
+      return deferred.promise();
+    }
+
+    for (var i = 0; i < defaultList.length; ++i) {
+      if (defaultList[i].id == id) { 
+        deferred.resolve(defaultList[i]);
+        return deferred.promise();
+      }
+    }
+
+    var that = this;
+    var baseUrl = this.getApiUrl();
+    $.ajax({type: 'GET', url: baseUrl + id})
+      .done(function(data) {
+        var result = that.formatResult(data);
+        entitiesMap[id] = result;
+        deferred.resolve(result);
+      })
+      .fail(function(data) {
+        alert("Failed to retrieve entity")
+        deferred.resolve(undefined);
+      });
+
+    return deferred.promise();
+  };
+
+  this.getDefaultEntity = function() {
+    var deferred = $.Deferred(); 
+    if (defaultValue) {
+      deferred.resolve(defaultValue);
+      return deferred.promise();
+    }
+
+    var that = this;
+    this.getDefaultValue().done(
+      function(data) {
+        var result = that.formatResult(data);
+        entitiesMap[result.id] = result;
+        defaultValue = result;
+        deferred.resolve(result);
+      })
+      .fail(function(data) {
+        alert("Failed to retrieve default value");
+        deferred.resolve(undefined);
+      });
+
+    return deferred.promise();
+  };
+};
+
+edu.common.de.LookupSvc.extend = edu.common.de.Extend;

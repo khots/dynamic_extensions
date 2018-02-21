@@ -11,12 +11,16 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.zip.ZipInputStream;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import edu.common.dynamicextensions.nutility.BOUtil;
+
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -39,6 +43,8 @@ import edu.common.dynamicextensions.domain.nui.UserContext;
 import edu.common.dynamicextensions.ndao.TransactionManager;
 import edu.common.dynamicextensions.ndao.TransactionManager.Transaction;
 import edu.common.dynamicextensions.nutility.IoUtil;
+import edu.common.dynamicextensions.util.DirOperationsUtility;
+import edu.common.dynamicextensions.util.ZipUtility;
 import edu.wustl.dynamicextensions.formdesigner.mapper.Properties;
 import edu.wustl.dynamicextensions.formdesigner.resource.facade.ContainerFacade;
 import edu.wustl.dynamicextensions.formdesigner.usercontext.AppUserContextProvider;
@@ -198,9 +204,10 @@ public class Form {
 		try {
 			// get temp location programatically.
 			if (file.getOriginalFilename() != null) {
-				String uploadedFileLocation = "/tmp/" + new Date().getTime() + file.getOriginalFilename();
-				Utility.saveStreamToFileInTemp(file.getInputStream(), uploadedFileLocation);
-				output = "{\"status\": \"saved\", \"file\" : \"" + uploadedFileLocation + "\"}";
+				String filename = UUID.randomUUID().toString();
+				File pvFile = new File(System.getProperty("java.io.tmpdir"), filename);
+				FileUtils.copyInputStreamToFile(file.getInputStream(), pvFile);
+				output = "{\"status\": \"saved\", \"file\" : \"" + filename + "\"}";
 			}
 		} catch (Exception ex) {
 			return output;
@@ -258,8 +265,13 @@ public class Form {
 		Transaction txn = null;
 		
 		try {
-
-			Utility.downloadFile(file.getInputStream(), tmpDirName, "forms.xml", false);
+			String contentType = file.getContentType();
+			if (contentType != null && contentType.equals("application/zip")) {
+				DirOperationsUtility.getInstance().createTempDirectory(tmpDirName);
+				ZipUtility.extractZipToDestination(file.getInputStream(), tmpDirName);
+			} else {
+				Utility.downloadFile(file.getInputStream(), tmpDirName, "forms.xml", false);
+			}
 
 			//
 			// Once the zip is extracted, following will be directory layout
@@ -293,13 +305,16 @@ public class Form {
 			TransactionManager.getInstance().commit(txn);
 			output.put("status", "success");
 			output.put("containerIds", containerIds);
-
-			//	}
-
 		} catch (Exception ex) {
 			output.put("status", "error");
 			if (txn != null) {
 				TransactionManager.getInstance().rollback(txn);
+			}
+		} finally {
+			try {
+				DirOperationsUtility.getInstance().deleteDirectory(new File(tmpDirName));
+			} catch (Exception e) {
+				
 			}
 		}
 

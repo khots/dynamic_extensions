@@ -3,8 +3,12 @@
  */
 package edu.common.dynamicextensions.domain.nui;
 
+import static edu.common.dynamicextensions.nutility.XmlUtil.writeElement;
+
 import java.io.Serializable;
+import java.io.Writer;
 import java.util.Map;
+import java.util.Properties;
 
 import org.apache.commons.lang.StringUtils;
 
@@ -29,6 +33,15 @@ public abstract class TextField extends Control implements Serializable {
 
 	public void setDefaultValue(String defaultValue) {
 		this.defaultValue = defaultValue;
+	}
+	
+	@Override
+	public ValidationStatus validate(Object value) {
+		if (isMandatory() && (value == null || value.toString().trim().isEmpty())) {
+			return ValidationStatus.NULL_OR_EMPTY;
+		}
+		
+		return ValidationStatus.OK;
 	}
 
 	@Override
@@ -63,4 +76,11 @@ public abstract class TextField extends Control implements Serializable {
 		props.put("width", getNoOfColumns());
 		props.put("defaultValue", getDefaultValue());		
 	}
+
+	@Override
+	public void serializeToXml(Writer writer, Properties props) {
+		super.serializeToXml(writer, props);
+		writeElement(writer, "width",        getNoOfColumns());
+		writeElement(writer, "defaultValue", getDefaultValue());		
+	}	
 }

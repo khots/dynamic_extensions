@@ -1,5 +1,6 @@
 package edu.common.dynamicextensions.nutility;
 
+import java.sql.Connection;
 import java.sql.SQLException;
 
 import javax.sql.DataSource;
@@ -12,19 +13,37 @@ public class DEApp {
 	private static String fileUploadDir;
 
 	private static String dateFormat;
+	
+	private static String timeFormat;
 
-	public static void init(DataSource ds, String fileUploadDir, String dateFormat) {
+	public static void init(DataSource ds, String fileUploadDir, String dateFormat, String timeFormat) {
 		JdbcDaoFactory.setDataSource(ds);
         TransactionManager.getInstance(ds);
+        Connection conn = null;
         try {
-			String product = ds.getConnection().getMetaData().getDatabaseProductName();
+            conn = ds.getConnection();
+			String product = conn.getMetaData().getDatabaseProductName();
 	        DbSettingsFactory.init(product);
 		} catch (SQLException e) {
 			throw new RuntimeException("Error while retrieving the Db type from Datasource " + e);
 		}
+        finally {
+          if(conn != null)
+          {
+            try
+            {
+              conn.close();
+            }
+            catch (SQLException e)
+            {
+              e.printStackTrace();
+            }
+          }
+        }
 
 		DEApp.fileUploadDir = fileUploadDir;
-		DEApp.dateFormat = dateFormat != null ? dateFormat : "MM/dd/yyyy";
+		DEApp.dateFormat = dateFormat != null ? dateFormat : "MM-dd-yyyy";
+		DEApp.timeFormat = timeFormat !=null ? timeFormat : "HH:mm";
 	}
 
 	public static String getFileUploadDir() {
@@ -34,4 +53,9 @@ public class DEApp {
 	public static String getDateFormat() {
 		return dateFormat;
 	}
+
+	public static String getTimeFormat() {
+		return timeFormat;
+	}
+	
 }

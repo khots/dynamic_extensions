@@ -3,7 +3,12 @@
  */
 package edu.common.dynamicextensions.domain.nui;
 
+import static edu.common.dynamicextensions.nutility.XmlUtil.writeElement;
+import static edu.common.dynamicextensions.nutility.XmlUtil.writeElementEnd;
+import static edu.common.dynamicextensions.nutility.XmlUtil.writeElementStart;
+
 import java.io.Serializable;
+import java.io.Writer;
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -12,10 +17,12 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 
 import edu.common.dynamicextensions.napi.ControlValue;
 import edu.common.dynamicextensions.ndao.ColumnTypeHelper;
+import edu.common.dynamicextensions.nutility.ContainerXmlSerializer;
 
 public abstract class SelectControl extends Control implements Serializable {
 	private static final long serialVersionUID = 7354155108839121342L;
@@ -226,4 +233,81 @@ public abstract class SelectControl extends Control implements Serializable {
 		props.put("pvs", pvs);
 		props.put("pvOrdering", pvDataSrc.getOrdering().name());		
 	}
+
+	@Override
+	public void serializeToXml(Writer writer, Properties props) {
+		super.serializeToXml(writer, props);
+
+		writeElement(writer, "defaultValue", getDefaultValue());
+		writeElementStart(writer, "options");
+		
+		PvDataSource pvDataSource = getPvDataSource();
+		String sql = pvDataSource.getSql();
+		if (sql != null) {
+			writeElement(writer, "sql", sql);
+		} else {
+			Date today = Calendar.getInstance().getTime();
+			List<PermissibleValue> pvs = pvDataSource.getPermissibleValues(today);
+			ContainerXmlSerializer.writePvValues(writer, pvs, getName(), props);
+		}
+
+		writeElementEnd(writer, "options");		
+	}	
+	
+	public boolean isValidPv(String input) {
+		if (input == null || input.trim().isEmpty()) {
+			return true;
+		}
+		
+		List<PermissibleValue> pvs = getPvs();
+		if (pvs == null || pvs.isEmpty()) {
+			return false; 
+		}
+		
+		boolean found = false;
+		for (PermissibleValue pv : pvs) {
+			if (pv.getValue().equals(input)) {
+				found = true;
+				break;
+			}
+		}
+		
+		return found;
+	}
+	
+	public ValidationStatus validateSingle(Object value) {
+		boolean empty = (value == null || value.toString().trim().isEmpty());
+		if (isMandatory() && empty) {
+			return ValidationStatus.NULL_OR_EMPTY;
+		}
+		
+		if (empty) {
+			return ValidationStatus.OK;
+		}
+		
+		return isValidPv(value.toString()) ? ValidationStatus.OK : ValidationStatus.INVALID_VALUE;
+	}
+
+	public ValidationStatus validateMultiple(Object value) {
+		if (isMandatory() && value == null) {
+			return ValidationStatus.NULL_OR_EMPTY;
+		}
+		
+		if (value == null) {
+			return ValidationStatus.OK;
+		}
+		
+		String[] values = (String[])value;
+		if (isMandatory() && values.length == 0) {
+			return ValidationStatus.NULL_OR_EMPTY;
+		}
+		
+		for (String val : values) {
+			if (!isValidPv(val)) {
+				return ValidationStatus.INVALID_VALUE;
+			}
+		}
+		
+		return ValidationStatus.OK;
+	}	
 }

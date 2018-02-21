@@ -183,7 +183,7 @@ var Utility = {
 	},
 
 	toCamelCase : function(str) {
-		str = $.camelCase(str.replace(/[_ ]/g, '-')).replace(/-/g, '');
+		str = $.camelCase(str.replace(/[^a-z0-9]+/ig, '-')).replace(/-/g, '');
 		return str.substring(0, 1).toLowerCase() + str.substring(1);
 	},
 

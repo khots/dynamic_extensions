@@ -21,7 +21,7 @@ public class Query {
 
     private QueryExpressionNode queryExpr;
 
-    private boolean wideRows;
+    private WideRowMode wideRowMode;
     
     private boolean ic;
     
@@ -40,8 +40,8 @@ public class Query {
     private Query() {
     }
             
-    public Query wideRows(boolean wideRows) {
-        this.wideRows = wideRows;
+    public Query wideRowMode(WideRowMode mode) {
+        this.wideRowMode = mode;
         return this;
     }
     
@@ -83,7 +83,7 @@ public class Query {
     }
 
     public long getCount() {
-        QueryGenerator gen = new QueryGenerator(wideRows, ic, dateFormat, timeFormat);
+        QueryGenerator gen = new QueryGenerator(wideRowMode, ic, dateFormat, timeFormat);
         String countSql = gen.getCountSql(queryExpr, queryJoinTree);
 
         long t1 = System.currentTimeMillis();            
@@ -105,7 +105,7 @@ public class Query {
 
     public QueryResponse getData(int start, int numRows) {
     	final boolean wideRowSupport = 
-    			wideRows && 
+    			(wideRowMode != WideRowMode.OFF) && 
     			!queryExpr.isAggregateQuery() &&
     			!queryExpr.hasResultPostProc();
     	
@@ -147,12 +147,12 @@ public class Query {
     }
     
     private String getDataSql(boolean wideRows, int start, int numRows) {
-        QueryGenerator gen = new QueryGenerator(wideRows, ic, dateFormat, timeFormat);
+        QueryGenerator gen = new QueryGenerator(wideRowMode, ic, dateFormat, timeFormat);
         return gen.getDataSql(queryExpr, queryJoinTree, start, numRows);        
     }
 
     private QueryResultData getWideRowData(ResultSet rs) {
-        ShallowWideRowGenerator wideRowGenerator = new ShallowWideRowGenerator(queryJoinTree, queryExpr);
+        ShallowWideRowGenerator wideRowGenerator = new ShallowWideRowGenerator(queryJoinTree, queryExpr, wideRowMode);
         wideRowGenerator.start();
         int dbRowsCount = wideRowGenerator.processResultSet(rs);
         wideRowGenerator.end();

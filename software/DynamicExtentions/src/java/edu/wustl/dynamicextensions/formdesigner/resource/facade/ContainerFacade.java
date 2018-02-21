@@ -3,6 +3,7 @@ package edu.wustl.dynamicextensions.formdesigner.resource.facade;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.Date;
 
 import javax.servlet.http.HttpServletRequest;
@@ -19,9 +20,15 @@ import edu.wustl.dynamicextensions.formdesigner.mapper.PvMapper;
 import edu.wustl.dynamicextensions.formdesigner.mapper.RegularContainerMapper;
 import edu.wustl.dynamicextensions.formdesigner.utility.CSDConstants;
 
-public class ContainerFacade {
+public class ContainerFacade implements Serializable {
 
-	private Container container = null;
+	/**
+   * 
+   */
+  private static final long serialVersionUID = -5008180987774552765L;
+  
+  
+  private Container container = null;
 	private UserContext userContext = null;
 	private static ContainerMapper containerMapper = new RegularContainerMapper();
 

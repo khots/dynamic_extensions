@@ -14,6 +14,7 @@ import java.util.Set;
 
 import edu.common.dynamicextensions.domain.nui.Container;
 import edu.common.dynamicextensions.domain.nui.Control;
+import edu.common.dynamicextensions.domain.nui.LookupControl;
 import edu.common.dynamicextensions.domain.nui.MultiSelectControl;
 import edu.common.dynamicextensions.domain.nui.SubFormControl;
 import edu.common.dynamicextensions.napi.VersionedContainer;
@@ -146,7 +147,7 @@ public class QueryCompiler
             }
             
             JoinTree child = current.getChild(link.getRefTab());            
-            if(child == null) {
+            if (child == null) {
                 child = new JoinTree(link.getRefTab(), "t" + tabCnt++);
                 child.setParent(current);
                 child.setForeignKey(link.getRefTabKey());
@@ -169,7 +170,7 @@ public class QueryCompiler
         String fieldNameParts[] = startField.split("\\.");
         for (int i = 0; i < fieldNameParts.length; i++) {
             JoinTree child = formTree.getChild(queryId + "." + fieldNameParts[i]);
-            if (child == null) { // TODO: should this be done?
+            if (child == null && i != (fieldNameParts.length  - 1)) { // TODO: should this be done?
             	child = formTree.getChild("0." + fieldNameParts[i]);
             }            	
 
@@ -200,17 +201,29 @@ public class QueryCompiler
         return sfTree;
     }
     
-    private JoinTree getFieldTree(JoinTree parentNode, MultiSelectControl field) {
-        JoinTree fieldTree = new JoinTree();
-        fieldTree.setField(field);
-        fieldTree.setTab(field.getTableName());
-        fieldTree.setParent(parentNode);
-        fieldTree.setAlias((new StringBuilder()).append("t").append(tabCnt++).toString());
-        fieldTree.setParentKey(field.getParentKey());
-        fieldTree.setForeignKey(field.getForeignKey());
-        return fieldTree;
+    private JoinTree getFieldTree(JoinTree parentNode, Control field) {
+		JoinTree fieldTree = new JoinTree();
+		fieldTree.setField(field);
+		fieldTree.setParent(parentNode);
+		fieldTree.setAlias((new StringBuilder()).append("t").append(tabCnt++).toString());
+
+		if (field instanceof MultiSelectControl) {
+			MultiSelectControl msCtrl = (MultiSelectControl) field;
+			fieldTree.setTab(msCtrl.getTableName());
+			fieldTree.setParentKey(msCtrl.getParentKey());
+			fieldTree.setForeignKey(msCtrl.getForeignKey());
+		} else if (field instanceof LookupControl) {
+			LookupControl luCtrl = (LookupControl) field;
+			fieldTree.setTab(luCtrl.getTableName());
+			fieldTree.setParentKey(luCtrl.getParentKey());
+			fieldTree.setForeignKey(luCtrl.getLookupKey());
+		} else {
+			throw new RuntimeException("Cannot create field tree for unknown type: " + field.getClass());
+		}
+
+		return fieldTree;
     }
-    
+        
     private Map<String, JoinTree> analyzeExpr(QueryExpressionNode expr) {
         Map<String, JoinTree> joinMap = new HashMap<String, JoinTree>();        
         analyzeFilterNodeMarker(0, expr.getFilterExpr(), joinMap);
@@ -449,8 +462,16 @@ public class QueryCompiler
         }
         
         if (!fieldNameParts[1].equals("extensions") && (ctrl instanceof SubFormControl) && fieldNameParts.length > 2) {
+          // OPS-171 - Begin
+          // Set the failIfAbsent to false so that the subform nodes gets added to the form tree
+          failIfAbsent = false;
+          // OPS-171 - End
         	formTree = analyzeSubFormFields(queryId, formTree, fieldNameParts, 1, captions, failIfAbsent);
         } else if (fieldNameParts[1].equals("extensions") && (ctrl instanceof SubFormControl) && fieldNameParts.length > 3) {
+          // OPS-171 - Begin
+          // Set the failIfAbsent to false so that the extension nodes gets added to the form tree
+          failIfAbsent = false;
+          // OPS-171 - End
         	formTree = analyzeExtensionFields(queryId, joinMap, formTree, fieldNameParts, captions, failIfAbsent);
         }
         
@@ -464,20 +485,19 @@ public class QueryCompiler
         
         form = formTree.getForm();
         ctrl = form.getControlByUdn(fieldNameParts[fieldNameParts.length - 1]);
-        if(ctrl == null) {
+        if (ctrl == null) {
         	throw new IllegalArgumentException("Invalid field: " + field.getName());
         }
         
         String tabAlias = formTree.getAlias();
-        if (ctrl instanceof MultiSelectControl) {
+        if (ctrl instanceof MultiSelectControl || ctrl instanceof LookupControl) {
         	JoinTree fieldTree = formTree.getChild(queryId + "." + ctrl.getName());
         	if (fieldTree == null && failIfAbsent) {
         		return false;
         	}
         	
         	if (fieldTree == null) {
-        		MultiSelectControl msField = (MultiSelectControl)ctrl;
-        		fieldTree = getFieldTree(formTree, msField);
+        		fieldTree = getFieldTree(formTree, ctrl);
         		formTree.addChild(queryId + "." + ctrl.getName(), fieldTree);
         	}
         	
@@ -492,6 +512,10 @@ public class QueryCompiler
     }    
         
     private JoinTree getSubFormTree(int queryId, JoinTree formTree, String fieldName, boolean failIfAbsent) {
+    	return getSubFormTree(queryId, formTree, fieldName, failIfAbsent, null);
+    }
+    
+    private JoinTree getSubFormTree(int queryId, JoinTree formTree, String fieldName, boolean failIfAbsent, String extnForm) {
     	Container form = formTree.getForm();
     	Control ctrl = form.getControlByUdn(fieldName);
     	
@@ -499,21 +523,25 @@ public class QueryCompiler
     		throw new IllegalArgumentException("Field is not sub-form:" + fieldName);
     	}
     	
+    	String key = fieldName;
+    	if (extnForm != null) {
+    		key += "." + extnForm;
+    	}
+    	
     	SubFormControl sfCtrl = (SubFormControl)ctrl;
-    	JoinTree sfTree = formTree.getChild(queryId + "." + sfCtrl.getName());
+    	JoinTree sfTree = formTree.getChild(queryId + "." + key);
     	if (sfTree == null && failIfAbsent) {
     		return null;
     	}
     	
     	if (sfTree == null) {
     		sfTree = getSubFormTree(formTree, sfCtrl);
-    		formTree.addChild(queryId + "." + sfCtrl.getName(), sfTree);
+    		formTree.addChild(queryId + "." + key, sfTree);
     	}
     	
-    	return sfTree;
+    	return sfTree; // add join inner when extnForm is not null
     }
-    
-    
+        
     private JoinTree analyzeSubFormFields(
     		int queryId, 
     		JoinTree formTree, 
@@ -543,7 +571,7 @@ public class QueryCompiler
     		String[] fieldNameParts, String[] captions, 
     		boolean failIfAbsent) {
     	
-    	JoinTree extensionTree = getSubFormTree(queryId, formTree, fieldNameParts[1], failIfAbsent);
+    	JoinTree extensionTree = getSubFormTree(queryId, formTree, fieldNameParts[1], failIfAbsent, fieldNameParts[2]);
     	if (extensionTree == null) {
     		return null;    		
     	}

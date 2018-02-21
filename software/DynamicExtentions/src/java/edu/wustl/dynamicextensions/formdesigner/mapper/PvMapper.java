@@ -79,11 +79,11 @@ public class PvMapper {
 	 */
 	public static List<PermissibleValue> getPvsFromFile(String pvFile) throws FileNotFoundException, IOException,
 			NumberFormatException {
-		// process permissible values from uploaded file.
-		//String pvFile = controlProperties.getString("pvFile");
+
 		List<PermissibleValue> pvList = new ArrayList<PermissibleValue>();
 		if (pvFile != null) {
-			CSVReader csvReader = new CSVReader(new FileReader(new File(pvFile)));
+			File file = new File(System.getProperty("java.io.tmpdir"), pvFile);
+			CSVReader csvReader = new CSVReader(new FileReader(file)); // TODO: Change here
 			String[] option;
 			
 			// Escape the header Row
@@ -92,14 +92,6 @@ public class PvMapper {
 			while ((option = csvReader.readNext()) != null) {
 				PermissibleValue pv = new PermissibleValue();
 				pv.setValue(option[0].isEmpty() ? null : option[0]);
-//				pv.setNumericCode(option[1].isEmpty() ? null : Long.parseLong(option[1]));
-//				pv.setConceptCode(option[2].isEmpty() ? null : option[2]);
-//				pv.setDefinitionSource(option[3].isEmpty() ? null : option[3]);
-//			
-//				// TODO :: Need to check the validity of optionName 
-//				// Now optionName = value
-//				pv.setOptionName(pv.getValue());
-				
 				pvList.add(pv);
 			}
 		}

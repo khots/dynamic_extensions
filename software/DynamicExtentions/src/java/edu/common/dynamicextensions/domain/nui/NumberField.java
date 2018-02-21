@@ -1,12 +1,19 @@
 
 package edu.common.dynamicextensions.domain.nui;
 
+import static edu.common.dynamicextensions.nutility.XmlUtil.writeElement;
+import static edu.common.dynamicextensions.nutility.XmlUtil.writeElementEnd;
+import static edu.common.dynamicextensions.nutility.XmlUtil.writeElementStart;
+
 import java.io.Serializable;
+import java.io.Writer;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Properties;
 
 import org.apache.commons.lang.StringUtils;
 
@@ -108,6 +115,48 @@ public class NumberField extends TextField implements Serializable {
 	public DataType getDataType() {
 		return noOfDigitsAfterDecimal == 0 ? DataType.INTEGER : DataType.FLOAT;
 	}
+	
+	@Override
+	public ValidationStatus validate(Object value) {
+		ValidationStatus status = super.validate(value);
+		if (status != ValidationStatus.OK) {
+			return status;
+		}
+		
+		if (value == null || value.toString().trim().isEmpty()) {
+			return status;
+		}
+		
+		BigDecimal number = null;
+		try {
+			number = new BigDecimal(value.toString().trim());
+		} catch (Exception e) {
+			return ValidationStatus.NOT_NUMBER;
+		}
+		
+		String minValStr = getMinValue();
+		if (minValStr != null && !minValStr.trim().isEmpty()) {
+			BigDecimal minVal = new BigDecimal(minValStr);
+			if (number.compareTo(minVal) < 0) {
+				return ValidationStatus.NUMBER_OUT_OF_RANGE;
+			}
+		}
+		
+		String maxValStr = getMaxValue();
+		if (maxValStr != null && !maxValStr.trim().isEmpty()) {
+			BigDecimal maxVal = new BigDecimal(maxValStr);
+			if (number.compareTo(maxVal) > 0) {
+				return ValidationStatus.NUMBER_OUT_OF_RANGE;
+			}
+		}
+		
+		int actualDigitsAfterDecimal = getNumberOfDigitsAfterDecimal(value.toString().trim());
+		if (actualDigitsAfterDecimal > noOfDigitsAfterDecimal) {
+			return ValidationStatus.DIGITS_AFTER_DECIMAL_EXCEEDS;
+		}
+		
+		return ValidationStatus.OK;
+	}
 
 	@SuppressWarnings("unchecked")
 	@Override
@@ -155,11 +204,15 @@ public class NumberField extends TextField implements Serializable {
 	
 	@Override
 	public String toString(Object value) {
+		if (value instanceof Number) {
+			value = new BigDecimal(((Number)value).toString());
+		}
+		
 		if (!(value instanceof BigDecimal)) {
 			return null;
 		}
+		
 		BigDecimal numberValue = (BigDecimal) value;
-
 		if (BigDecimal.ZERO.compareTo(numberValue) == 0) {
 			numberValue = BigDecimal.ZERO;
 		} else {
@@ -179,4 +232,48 @@ public class NumberField extends TextField implements Serializable {
 		props.put("calculated", isCalculated());
 		props.put("formula", getFormula());		
 	}
+	
+	@Override
+	public void serializeToXml(Writer writer, Properties props) {
+		writeElementStart(writer, "numberField");
+		super.serializeToXml(writer, props);
+
+		writeElement(writer, "noOfDigits", getNoOfDigits());			
+		if (getNoOfDigitsAfterDecimal() != 0) {
+			writeElement(writer, "noOfDigitsAfterDecimal", getNoOfDigitsAfterDecimal());
+		}
+		
+		writeElement(writer, "formula",          getFormula());
+		writeElement(writer, "measurementUnits", getMeasurementUnits());
+	
+		for (ValidationRule valRule : getValidationRules()) {				
+			if (!valRule.getName().equals("range")) {
+				continue;
+			}
+			
+			for (Entry<String, String> ruleParam : valRule.getParams().entrySet()) {
+				String prop = "";
+				if (ruleParam.equals("min")) {
+					prop = "minValue";
+				} else if (ruleParam.equals("max")) {
+					prop = "maxValue";
+				} 
+				
+				if (!prop.isEmpty()) {
+					writeElement(writer, prop, ruleParam.getValue());
+				}
+			}
+		}
+		
+		writeElementEnd(writer, "numberField");		
+	}
+	
+	private int getNumberOfDigitsAfterDecimal(String value) {
+	    int index = value.indexOf('.');
+	    if (index < 0) {
+	       return 0;
+	    }
+	    
+	    return value.length() - 1 - index;
+	}	
 }
